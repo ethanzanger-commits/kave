@@ -1,3 +1,6 @@
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-export const db = drizzle(neon(process.env.DATABASE_URL || "postgres://build:build@localhost/build"));
+const raw = (process.env.DATABASE_URL || "").trim().replace(/^psql\s+/, "").replace(/^['"]|['"]$/g, "");
+const ok = /^postgres(ql)?:\/\//.test(raw);
+if (!ok && process.env.NEXT_PHASE !== "phase-production-build") throw new Error("DATABASE_URL is missing or not a postgresql:// URL");
+export const db = drizzle(neon(ok ? raw : "postgres://build:build@localhost/build"));
