@@ -1,0 +1,13 @@
+:root{--bg:#dde5b6;--ink:#2a1a12;--accent:#1f6f5c}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.5 Georgia,"Times New Roman",serif}
+main{max-width:30rem;margin:0 auto;padding:2.5rem 1.25rem}
+h1{font-size:2.6rem;margin:.2em 0;letter-spacing:-.02em}.lead{font-size:1.2rem;margin-bottom:1.5rem}
+form{margin:.6rem 0}label{display:block;margin:.8rem 0;font-weight:bold}
+input{display:block;width:100%;padding:.7rem;margin-top:.25rem;border:2px solid var(--ink);border-radius:6px;background:#fff;font:inherit;font-weight:normal}
+button{padding:.7rem 1rem;border:2px solid var(--ink);border-radius:6px;background:transparent;color:var(--ink);font:inherit;cursor:pointer;width:100%}
+button.primary{background:var(--ink);color:var(--bg)}p button{width:auto;padding:.1rem .5rem;margin-left:.4rem}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.badge{background:var(--accent);color:#fff;padding:.1rem .6rem;border-radius:99px;font-size:.85rem}
+.who{display:flex;gap:1rem;align-items:center}.who img{border-radius:50%}.row{display:flex;gap:.6rem}
+fieldset{border:2px solid var(--ink);border-radius:6px;margin:.8rem 0}
+nav{display:flex;gap:1rem;margin:.6rem 0}.card{background:#fff;border:2px solid var(--ink);border-radius:10px;padding:1rem;margin:1rem 0}.card h2{margin:0}.row form{flex:1}
