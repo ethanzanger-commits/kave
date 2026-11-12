@@ -1,0 +1,1 @@
+{"crons":[{"path":"/api/cron/weekly","schedule":"0 7 * * 0"},{"path":"/api/cron/reminders","schedule":"0 6 * * *"},{"path":"/api/cron/profile-reminders","schedule":"30 6 * * *"}]}

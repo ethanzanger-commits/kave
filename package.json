@@ -1,0 +1,31 @@
+{
+ "name": "kave",
+ "private": true,
+ "scripts": {
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start",
+  "db:push": "drizzle-kit push"
+ },
+ "dependencies": {
+  "@auth/drizzle-adapter": "^1.7.4",
+  "@neon/config": "^1.11.3",
+  "@neon/env": "^1.6.15",
+  "@neondatabase/serverless": "^0.10.4",
+  "@vercel/analytics": "^2.0.1",
+  "drizzle-orm": "^0.38.0",
+  "jszip": "^3.10.1",
+  "leaflet": "^1.9.4",
+  "mammoth": "^1.8.0",
+  "next": "^15.0.0",
+  "next-auth": "5.0.0-beta.25",
+  "nodemailer": "^6.9.16",
+  "papaparse": "^5.4.1",
+  "pdf-parse": "^1.1.1",
+  "react": "^19.0.0",
+  "react-dom": "^19.0.0"
+ },
+ "devDependencies": {
+  "drizzle-kit": "^0.30.0"
+ }
+}
