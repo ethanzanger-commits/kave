@@ -4,6 +4,8 @@ import { missing } from "@/lib/complete";
 import { auth } from "@/auth";
 import { db, client } from "@/db";
 import Flair from "../Flair";
+import Prompts from "../Prompts";
+import { cityOf } from "@/lib/place";
 import { winnerMap, isNewProfile, short } from "@/lib/leaders";
 import { profiles, users, swipes, blocks, matches } from "@/schema";
 import { eq, ne, or, sql, isNotNull, inArray } from "drizzle-orm";
@@ -32,26 +34,28 @@ export default async function Discover() {
   const rank = (x) => score(mine, x.p) + learn(x.p, hist) + ((inv[x.p.userId] || 0) >= 5 ? 2 : 0) + (x.p.freeUntil && x.p.freeUntil > new Date() ? (free ? 4 : 2) : 0) + (overlap(mine, x.p).length ? 2 : 0) + ((win[x.p.userId] || []).length ? 6 : 0) + (isNewProfile(x.p) ? 2 : 0);
   const next = all.filter((x) => !seen.has(x.p.userId)).sort((a, b) => rank(b) - rank(a))[0];
   return (
-    <main>
+    <main className="wide">
       <Nav />
-      <p>{near} {near === 1 ? "person" : "people"} around {mine.neighborhood}.</p>
+      <p className="kicker">This week</p>
+      <p className="meta" style={{ marginTop: 0 }}>{near} {near === 1 ? "person" : "people"} around {mine.neighborhood}. <a href="/around">Browse everyone</a></p>
       <form action={toggleFree}><button className={free ? "primary" : ""}>{free ? "You're free this week (tap to undo)" : "I'm free for coffee this week"}</button></form>
       {g.locked ? <div className="card"><h2>Invite {g.need - g.invited} more to keep going</h2><p>You've used your {g.free} free coffee requests. <a href="/invite">Share your invite link</a> ({g.invited}/{g.need} joined)</p></div> : !next ? <p>You're all caught up. Invite people from My coffees to see more.</p> : (
-        <div className="card">
-          {next.u.image ? <img src={next.u.image} alt="" width="96" height="96" referrerPolicy="no-referrer" style={{ borderRadius: "50%" }} /> : <div className="avatar">{(next.u.name || "?")[0]}</div>}
-          <h2>{short(next.u.name, next.u.email)}</h2><Flair cats={win[next.p.userId]} isNew={isNewProfile(next.p)} />{next.p.foundingNo && <span className="badge"><img className="badgeimg" src="/badges/founding-50.svg" alt="" width="20" height="20" /> Founding 50 #{next.p.foundingNo}</span>}{tierFor(inv[next.p.userId] || 0) && <span className="badge"><img className="badgeimg" src={`/badges/${tierFor(inv[next.p.userId] || 0).slug}.svg`} alt="" width="20" height="20" /> {tierFor(inv[next.p.userId] || 0).name}</span>}<p>{next.p.headline} · {next.p.neighborhood}</p>
+        <article className="profile split" style={{ marginTop: "1.2rem" }}>
+          <a className="photo" href={"/member/" + next.p.userId}>{next.u.image ? <img src={next.u.image} alt={`Photo of ${short(next.u.name, next.u.email)}`} referrerPolicy="no-referrer" /> : <div className="avatar">{short(next.u.name, next.u.email)[0]}</div>}</a>
+          <div className="body">
+          <h2 className="display" style={{ fontSize: "2.2rem" }}><a href={"/member/" + next.p.userId}>{short(next.u.name, next.u.email)}</a></h2>
+          <p className="role">{[next.p.headline, next.p.company].filter(Boolean).join(" at ")}, {cityOf(next.p)}</p>
+          <p><Flair cats={win[next.p.userId]} isNew={isNewProfile(next.p)} />{next.p.foundingNo && <span className="badge">Founding 50 #{next.p.foundingNo}</span>}{next.p.freeUntil && next.p.freeUntil > new Date() && <span className="chip">Free this week</span>}</p>
           {next.p.about && <p>{next.p.about}</p>}
-          {next.p.lookingFor && <p><b>Looking for:</b> {next.p.lookingFor}</p>}
-          {next.p.canHelp && <p><b>Can help with:</b> {next.p.canHelp}</p>}
-          <p>{next.p.freeUntil && next.p.freeUntil > new Date() && <span className="chip" style={{ background: "#ffe3a3" }}>Free this week{free ? " (you too!)" : ""}</span>}{(next.p.skills || []).slice(0, 5).map((x) => <span className="chip" key={x}>{x}</span>)}</p>
-          <p className="why"><b>Why you two?</b> {why(mine, next.p)}</p>
-          {overlap(mine, next.p).length > 0 && <p style={{ margin: 0 }}>Both available: {overlap(mine, next.p).join(", ")}.</p>}
-          <div className="row"><form action={blockUser.bind(null, next.p.userId, "block")}><button>Block</button></form><form action={blockUser.bind(null, next.p.userId, "report")}><button>Report</button></form></div>
+          <Prompts p={next.p} />
+          <p className="why"><b>Why you two?</b> {why(mine, next.p)}{overlap(mine, next.p).length > 0 ? ` You're both free ${overlap(mine, next.p).join(", ")}.` : ""}</p>
           <div className="row">
-            <form action={swipe.bind(null, next.p.userId, false)}><button>Maybe later</button></form>
-            <form action={swipe.bind(null, next.p.userId, true)}><button className="primary">Coffee?</button></form>
+            <form action={swipe.bind(null, next.p.userId, true)}><button className="primary">Ask for a coffee</button></form>
+            <form action={swipe.bind(null, next.p.userId, false)}><button>Not now</button></form>
           </div>
-        </div>)}
+          <p><small><a href={"/member/" + next.p.userId}>See full profile</a></small></p>
+          </div>
+        </article>)}
     </main>
   );
 }
