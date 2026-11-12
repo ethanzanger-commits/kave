@@ -1,1 +1,1 @@
-export default { serverExternalPackages: ["pdf-parse", "mammoth"] };
+export default { serverExternalPackages: ["pdf-parse", "mammoth", "web-push"] };

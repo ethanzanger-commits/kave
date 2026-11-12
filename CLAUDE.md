@@ -15,7 +15,9 @@ Next.js 15 App Router (plain JS) · Auth.js v5 (JWT sessions, Drizzle adapter, e
 - Demo users have ids `demo-*`; exclude from all stats. Never delete production records except user-initiated `deleteAccount`.
 - Emails: `sendMail` returns true/false. Marketing emails honor `optout` table and signed `/unsubscribe` link.
 - Analytics: `track(userId, name)` into `event` (never throws).
-- UI: tokens in `app/globals.css` (cream/aubergine/pink, Fraunces + DM Sans), mobile-first, shared `<Nav />`.
+- UI: navy #101b33 / cream #f5f0e4 / orange #e8590c, Young Serif + Instrument Sans, ruled sections not boxed cards, square photos, no emoji; tokens in `app/globals.css`; shared `<Nav />` with a More menu.
+
+- Growth numbers: use views `complete_member` and `member_activity` (migrations/kave8-growth.sql) and `lib/growth.js`, never event counts. Source captured at first /profile load from cookies (`ref`, `circle`, `src` via /go/<source>).
 
 ## Commands
 Build check: `DATABASE_URL=postgres://u:p@localhost/db AUTH_SECRET=x npx next build`

@@ -1,3 +1,4 @@
+import AdminNav from "../AdminNav";
 import { auth } from "@/auth";
 import { client } from "@/db";
 import { redirect } from "next/navigation";
@@ -27,7 +28,7 @@ export default async function Analytics() {
   const max = Math.max(1, ...weeks.map((w) => Number(w.c)), ...active.map((w) => Number(w.c)));
   return (
     <main>
-      <nav><a href="/admin">Admin</a><a href="/admin/growth">Growth</a><a href="/discover">App</a></nav>
+      <AdminNav />
       <h1>Analytics</h1>
       {err && <p className="why">{err}</p>}
       {f && <>
