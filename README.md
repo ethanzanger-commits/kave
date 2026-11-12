@@ -14,3 +14,5 @@ Coffee with people outside your network. Private beta, Jerusalem first.
 4. Share your invite link from My coffees. Everyone gets 3 free coffee requests, then `UNLOCK_INVITES` invited friends unlock the rest.
 
 <!-- build-trigger 11/12/2026 10:31:59 -->
+
+<!-- re-verify auth env -->
