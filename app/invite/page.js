@@ -18,7 +18,8 @@ export default async function Invite() {
   return (
     <main>
       <Nav />
-      <h1>Your network is better over coffee.</h1>
+      <p className="kicker">Invite</p>
+      <h1 className="display">Your network is better over coffee.</h1>
       <p className="lead">Know someone who should be on Kave? Bring them along.</p>
       <div className="card">
         <b>{n} {n === 1 ? "friend" : "friends"} joined</b>{next && <span> · {next.n - n} more for {next.name}</span>}

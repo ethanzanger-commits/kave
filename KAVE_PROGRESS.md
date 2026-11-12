@@ -9,6 +9,7 @@ Neon migrations run in order: base tables, later feature SQL, `kave2.sql`, `kave
 Welcome page + welcome email on first completion, sticky Save bar, account-status line, onboarding drop-off + incomplete sign-up list in /admin/growth, Founding spots on home, home OG image, robots, `migrations/kave4-indexes.sql`.
 Also: Who's new (7 days via profile.completedAt), monthly leaderboards (/leaderboard), winner flair + search priority next month (monthly_winner, finalized lazily in lib/leaders.js), `migrations/kave5-leaderboards.sql`, `tests/leaders.test.mjs`.
 Also: /contact (Formspree via NEXT_PUBLIC_FORMSPREE_ID), branded HTML emails for all mail, custom magic-link email, optional SMTP_* sender (Brevo) via lib/mail.js.
+Growth infra: source capture (/go/<source>, ref, circle) at first /profile load, referral attribution at sign-up (users.referredBy) and completion, views complete_member + member_activity, /admin/weekly /admin/people /admin/experiments, `migrations/kave7-community.sql` + `kave8-growth.sql`, tests/growth.test.mjs. Community: homepage opt-in photos, public thank-yous, saved, circles, PWA + web push (needs VAPID keys).
 ## Next steps
 1. Attribute referrals at sign-up (not only at profile completion).
 2. LinkedIn sign-in (removes email wait).

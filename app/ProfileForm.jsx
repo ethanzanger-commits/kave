@@ -9,7 +9,7 @@ const draft = (d) => [d.headline && `${d.headline}${d.company ? " at " + d.compa
 export default function ProfileForm({ initial, image }) {
   const [photo, setPhoto] = useState(image || "");
   const router = useRouter();
-  const [d, setD] = useState({ about: "", lookingFor: "", canHelp: "", weekly: true, city: "", headline: "", company: "", industry: "", neighborhood: "", linkedinUrl: "", ageOk: false, ...initial,
+  const [d, setD] = useState({ about: "", lookingFor: "", canHelp: "", workingOn: "", weekly: true, city: "", headline: "", company: "", industry: "", neighborhood: "", linkedinUrl: "", ageOk: false, ...initial,
     skills: initial.skills || [], availability: initial.availability || [], experience: initial.experience || [], education: initial.education || [] });
   const [msg, setMsg] = useState("");
   const set = (k) => (e) => setD({ ...d, [k]: e.target.value });
@@ -54,8 +54,9 @@ export default function ProfileForm({ initial, image }) {
       {L("Headline", "headline", "What you do, in a line")}
       <label>About me<textarea maxLength={600} value={d.about || ""} onChange={set("about")} placeholder="A few friendly, professional lines about you" /></label>
       <button type="button" onClick={() => setD({ ...d, about: draft(d) })}>Suggest a bio</button>
-      {L("Looking for", "lookingFor", "e.g. a designer, intros to fintech CMOs")}
-      {L("Can help with", "canHelp", "e.g. ad budgets, partnership deals")}
+      <label>What I'm working on<textarea rows={2} maxLength={200} value={d.workingOn || ""} onChange={set("workingOn")} placeholder="A project, a launch, a problem you're chewing on" /></label>
+      <label>What I can help with<textarea rows={2} maxLength={160} value={d.canHelp || ""} onChange={set("canHelp")} placeholder="Ad budgets, partnership deals, hiring in Tel Aviv" /></label>
+      <label>What I'd like to learn<textarea rows={2} maxLength={160} value={d.lookingFor || ""} onChange={set("lookingFor")} placeholder="How others run growth, intros to fintech marketers" /></label>
       {L("Company", "company")}
       {L("Industry", "industry")}
       <label>Skills</label>
@@ -67,6 +68,7 @@ export default function ProfileForm({ initial, image }) {
       {d.education.length > 0 && <fieldset><legend>Education</legend>
         {d.education.map((x, i) => <p key={i}>{x.degree} {x.school} <button type="button" onClick={() => drop("education", i)}>Remove</button></p>)}</fieldset>}
       <fieldset><legend>When can you grab coffee?</legend>{AVAIL.map(([k, l]) => <label key={k} style={{ margin: ".3rem 0" }}><input type="checkbox" checked={d.availability.includes(k)} onChange={(e) => setD({ ...d, availability: e.target.checked ? [...d.availability, k] : d.availability.filter((x) => x !== k) })} style={{ display: "inline", width: "auto", marginRight: ".5rem" }} />{l}</label>)}</fieldset>
+      <label><input type="checkbox" checked={!!d.showOnHome} onChange={(e) => setD({ ...d, showOnHome: e.target.checked })} style={{ display: "inline", width: "auto", marginRight: ".5rem" }} />Show my photo, first name and headline on the Kave homepage (optional)</label>
       <label><input type="checkbox" checked={d.weekly !== false} onChange={(e) => setD({ ...d, weekly: e.target.checked })} style={{ display: "inline", width: "auto", marginRight: ".5rem" }} />Email me a weekly coffee pick</label>
       <label><input type="checkbox" checked={!!d.ageOk} onChange={(e) => setD({ ...d, ageOk: e.target.checked })} style={{ display: "inline", width: "auto", marginRight: ".5rem" }} />I'm 18 or older and agree to the <a href="/terms">Terms</a></label>
       <div className="sticky">

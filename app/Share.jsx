@@ -10,12 +10,13 @@ export default function Share({ link }) {
   return (
     <>
       <input readOnly value={link} aria-label="Your invite link" onFocus={(e) => e.target.select()} />
-      <p></p><button className="primary" onClick={share}>Invite friends</button>
+      <p className="sharemsg">{text}</p>
+      <button className="primary" onClick={() => { trackEvent("invite_shared"); window.open("https://wa.me/?text=" + encodeURIComponent(text)); }}>Send on WhatsApp</button>
       <p></p>
       <div className="row">
-        <button type="button" onClick={copy}>{ok ? "Copied!" : "Copy link"}</button>
+        <button type="button" onClick={share}>Share&hellip;</button>
+        <button type="button" onClick={copy}>{ok ? "Copied" : "Copy link"}</button>
         <button type="button" onClick={copyMsg}>Copy message</button>
-        <button type="button" onClick={() => { trackEvent("invite_shared"); window.open("https://wa.me/?text=" + encodeURIComponent(text)); }}>WhatsApp</button>
       </div>
     </>
   );

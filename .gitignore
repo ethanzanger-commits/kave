@@ -2,6 +2,3 @@
 node_modules
 .next
 .neon
-
-.vercel
-.env*

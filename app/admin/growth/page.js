@@ -1,3 +1,4 @@
+import AdminNav from "../AdminNav";
 import { auth } from "@/auth";
 import { client } from "@/db";
 import { redirect } from "next/navigation";
@@ -21,7 +22,7 @@ export default async function Growth() {
         (select count(*) from profile where "invitedBy" is not null)::int as ref_regs,
         (select count(*) from swipe where yes and "fromId" not like 'demo-%')::int as requests,
         (select count(*) from match where a not like 'demo-%' and b not like 'demo-%')::int as accepted,
-        (select count(distinct "userId") from event where at > now() - interval '7 days' and name <> 'ref_visit')::int as wau,
+        (select count(*) from (select "fromId" as id from swipe where at > now() - interval '7 days' union select "fromId" from message where at > now() - interval '7 days' union select a from match where at > now() - interval '7 days' union select b from match where at > now() - interval '7 days') x where id not like 'demo-%')::int as wau,
         (select count(*) from reminder where status = 'sent')::int as r_sent,
         (select count(*) from reminder where status = 'failed')::int as r_failed,
         (select count(*) from reminder where "clickedAt" is not null)::int as r_clicks,
@@ -40,7 +41,7 @@ export default async function Growth() {
   const regs = m?.registrations || 0;
   return (
     <main>
-      <nav><a href="/admin">Admin</a><a href="/admin/analytics">Analytics</a><a href="/discover">App</a></nav>
+      <AdminNav />
       <h1>Growth</h1>
       {err && <p className="why">{err}</p>}
       {m && <>
@@ -52,8 +53,8 @@ export default async function Growth() {
           <div className="bar"><div style={{ width: pct(50 - stats.foundingLeft, 50) + "%" }} /></div>
           <Row k="Next milestone" v={`${stats.count} of ${stats.target}`} /></div>
         <div className="card"><h2>Referrals</h2>
-          <Row k="Invitation shares" v={m.shares} />
-          <Row k="Referral link visits" v={m.visits} />
+          <Row k="Invite share taps (clicks, not sign-ups)" v={m.shares} />
+          <Row k="Referral link visits (clicks)" v={m.visits} />
           <Row k="Completed referral profiles" v={m.ref_regs} />
           <Row k="Visit to completed profile" v={pct(m.ref_regs, m.visits) + "%"} />
           <h2 style={{ marginTop: "1rem" }}>Top referrers</h2>

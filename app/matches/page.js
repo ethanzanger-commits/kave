@@ -1,3 +1,4 @@
+import Prompts from "../Prompts";
 import Nav from "../Nav";
 import { short } from "@/lib/leaders";
 import { auth } from "@/auth";
@@ -6,7 +7,7 @@ import { profiles, users, matches, thanks, messages, intros, swipes } from "@/sc
 import { eq, or, inArray } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { schedule, blockUser, checkIn, sendThanks, respond, sendMessage, makeIntro, answerIntro, swipe } from "../actions";
+import { schedule, blockUser, checkIn, sendThanks, respond, sendMessage, makeIntro, answerIntro, swipe, hideThanks } from "../actions";
 import BookForm from "../BookForm";
 import { starters } from "@/lib/match";
 import { cafePins } from "@/lib/cafes";
@@ -58,10 +59,9 @@ export default async function Matches() {
         const o = others.find((x) => x.p.userId === (m.a === me ? m.b : m.a)); if (!o) return null;
         return (
           <div className="card" key={m.id}>
-            {o.u.image ? <img src={o.u.image} alt="" width="56" height="56" referrerPolicy="no-referrer" style={{ borderRadius: "50%" }} /> : <div className="avatar">{(o.u.name || "?")[0]}</div>}
+            {o.u.image ? <img src={o.u.image} alt="" width="56" height="56" referrerPolicy="no-referrer" style={{ borderRadius: 2 }} /> : <div className="avatar">{(o.u.name || "?")[0]}</div>}
             <h2>{short(o.u.name, o.u.email)}</h2><p>{o.p.headline}</p>{o.p.about && <p>{o.p.about}</p>}
-            {o.p.lookingFor && <p><b>Looking for:</b> {o.p.lookingFor}</p>}
-            {o.p.canHelp && <p><b>Can help with:</b> {o.p.canHelp}</p>}
+            <Prompts p={o.p} />
             <div className="row"><form action={blockUser.bind(null, o.p.userId, "block")}><button>Block</button></form><form action={blockUser.bind(null, o.p.userId, "report")}><button>Report</button></form></div>
             <div>
               {msgs.filter((x) => x.matchId === m.id).sort((x, y) => x.at - y.at).slice(-5).map((x) => <p key={x.id} className={x.fromId === me ? "" : "why"} style={{ margin: ".3rem 0" }}><b>{x.fromId === me ? "You" : short(o.u.name, o.u.email)}:</b> {x.text}</p>)}
@@ -78,8 +78,8 @@ export default async function Matches() {
               {m.met == null && new Date(m.when) < new Date() && <form action={checkIn}><input type="hidden" name="id" value={m.id} /><p>Did it happen?</p>
                 <button name="met" value="yes">Yes, we met</button><button name="met" value="no">It didn't happen</button></form>}
               {m.met === true && <>
-                {th.filter((x) => x.fromId !== me).map((x) => <p className="why" key={x.fromId}>{x.text}</p>)}
-                {!th.some((x) => x.fromId === me) && <form action={sendThanks}><input type="hidden" name="id" value={m.id} /><input name="text" maxLength={140} placeholder="Say thanks in one line" required /><button>Send thanks</button></form>}
+                {th.filter((x) => x.fromId !== me).map((x) => <div key={x.fromId}><p className="why">{x.text}</p>{x.isPublic && !x.hidden && <form action={hideThanks}><input type="hidden" name="id" value={m.id} /><button>Hide from my profile</button></form>}</div>)}
+                {!th.some((x) => x.fromId === me) && <form action={sendThanks}><input type="hidden" name="id" value={m.id} /><input name="text" maxLength={140} placeholder="Say thanks in one line" required /><label style={{ display: "flex", gap: ".5rem", alignItems: "center", fontWeight: 400 }}><input type="checkbox" name="public" style={{ width: "auto", minHeight: 0, margin: 0 }} />Also show it on their profile</label><button>Send thanks</button></form>}
               </>}
               {m.met === false && <p>Thanks for checking in.</p>}
             </> : (
