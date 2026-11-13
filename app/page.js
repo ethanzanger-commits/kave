@@ -28,7 +28,7 @@ export default async function Home() {
           <form action={async (fd) => { "use server"; await signIn("nodemailer", { email: fd.get("email"), redirectTo: "/profile" }); }}>
             <label htmlFor="email">Your email</label>
             <input id="email" name="email" type="email" placeholder="you@company.com" required />
-            <p></p><button className="primary">Email me a sign-in link</button>
+            <p></p><button className={process.env.AUTH_LINKEDIN_ID ? undefined : "primary"}>Email me a sign-in link</button>
           </form>
           <p className="count"><b>{stats.count}</b> {stats.count === 1 ? "member" : "members"} so far{stats.foundingLeft > 0 ? `, and ${stats.foundingLeft} Founding 50 places still open.` : "."}</p>
         </div>
