@@ -30,29 +30,36 @@ export default async function Member({ params }) {
   const labels = Object.fromEntries(AVAIL);
   const common = overlap(mine || {}, p);
   const name = short(u.name, u.email);
+  const freeNow = p.freeUntil && p.freeUntil > new Date();
+  const avail = (p.availability || []).map((k) => (labels[k] || "").toLowerCase()).filter(Boolean);
+  const first = name.split(" ")[0];
+  const quiet = { style: { display: "inline" } };
   return (
-    <main>
+    <main className="wide">
       <Nav />
-      <article className="profile">
+      <article className="profile split">
         <div className="photo">{u.image ? <img src={u.image} alt={`Photo of ${name}`} referrerPolicy="no-referrer" className="portrait" /> : <div className="avatar">{name[0]}</div>}</div>
-        <h1 style={{ marginTop: 0 }}>{name}</h1>
-        <p className="role">{[p.headline, p.company].filter(Boolean).join(" at ")}, {cityOf(p)}</p>
-        <p><Flair cats={win[id]} isNew={isNewProfile(p)} />{p.foundingNo && <span className="badge">Founding 50 #{p.foundingNo}</span>}</p>
-        {p.about && <p>{p.about}</p>}
-        <Prompts p={p} />
-        {endorse.length > 0 && <section><h2>What people say</h2>{endorse.map((e, i) => <p key={i}>"{e.text}" <small>{short(e.name, e.email)}</small></p>)}</section>}
-        {me !== p.userId && <a className="cta li" href={`/messages/with/${p.userId}`}>Message {name}</a>}
-        {p.linkedinUrl && <a className="cta li" href={p.linkedinUrl} target="_blank" rel="noopener noreferrer">View {name} on LinkedIn</a>}
-        {(p.skills || []).length > 0 && <p>{p.skills.slice(0, 8).map((x) => <span className="chip" key={x}>{x}</span>)}</p>}
-        {(p.availability || []).length > 0 && <p><small>Free for coffee: {p.availability.map((k) => labels[k].toLowerCase()).join(", ")}.</small></p>}
-        {id !== me && <p className="why">{why(mine || {}, p)}{common.length > 0 ? ` You're both free ${common.join(", ")}.` : ""}</p>}
-        {id === me ? <p><a href="/profile">Edit your profile</a></p>
-          : m ? <a className="cta" href="/matches">You're matched. Open your coffee</a>
-          : mineSw?.yes ? <p className="why">You've asked {name} for a coffee. We'll email you when they reply.</p>
-          : theirSw?.yes && !mineSw ? <div><p><b>{name}</b> would like to grab a coffee with you.</p><div className="row"><form action={swipe.bind(null, id, true)}><SubmitButton className="primary">Accept</SubmitButton></form><form action={swipe.bind(null, id, false)}><SubmitButton>Decline</SubmitButton></form></div></div>
-          : <div className="row"><form action={swipe.bind(null, id, true)}><SubmitButton className="primary">Ask for a coffee</SubmitButton></form><form action={swipe.bind(null, id, false)}><SubmitButton>Not now</SubmitButton></form></div>}
-        {id !== me && <form action={toggleSave.bind(null, id)}><SubmitButton>{sv ? "Saved. Tap to remove" : "Save for later"}</SubmitButton></form>}
-        {id !== me && <p><small><form action={blockUser.bind(null, id, "report")} style={{ display: "inline" }}><SubmitButton style={{ width: "auto", minHeight: 0, border: 0, padding: 0, textDecoration: "underline", fontWeight: 400 }}>Report</SubmitButton></form>{" or "}<form action={blockUser.bind(null, id, "block")} style={{ display: "inline" }}><SubmitButton style={{ width: "auto", minHeight: 0, border: 0, padding: 0, textDecoration: "underline", fontWeight: 400 }}>block this member</SubmitButton></form></small></p>}
+        <div className="body">
+          <p className="kicker">{[p.industry, cityOf(p)].filter(Boolean).join(" · ") || "Member"}</p>
+          <h1 className="display" style={{ marginTop: 0 }}>{name}</h1>
+          <p className="role">{[p.headline, p.company].filter(Boolean).join(" at ")}</p>
+          <p><Flair cats={win[id]} isNew={isNewProfile(p)} />{p.foundingNo && <span className="badge">Founding 50 #{p.foundingNo}</span>}{freeNow && <span className="chip">Free this week</span>}</p>
+          {p.about && <p style={{ fontSize: "1.1rem", maxWidth: "36rem" }}>{p.about}</p>}
+          <Prompts p={p} />
+          {endorse.length > 0 && <section><h2>What people say</h2>{endorse.map((e, i) => <p key={i}>&ldquo;{e.text}&rdquo; <small>{short(e.name, e.email)}</small></p>)}</section>}
+          {me !== p.userId && <a className="cta li" href={`/messages/with/${p.userId}`}>Message {first}</a>}
+          {p.linkedinUrl && <a className="cta li" href={p.linkedinUrl} target="_blank" rel="noopener noreferrer">View {first} on LinkedIn</a>}
+          {(p.skills || []).length > 0 && <p>{p.skills.slice(0, 8).map((x) => <span className="chip" key={x}>{x}</span>)}</p>}
+          {avail.length > 0 && <p className="meta">Usually free for coffee {avail.join(", ")}.</p>}
+          {id !== me && <p className="why"><b>Why you two?</b> {why(mine || {}, p)}{common.length > 0 ? ` You're both free ${common.join(", ")}.` : ""}</p>}
+          {id === me ? <p><a href="/profile">Edit your profile</a></p>
+            : m ? <a className="cta" href="/matches">You're matched. Open your coffee</a>
+            : mineSw?.yes ? <p className="why">You've asked {first} for a coffee. We'll email you when they reply.</p>
+            : theirSw?.yes && !mineSw ? <div className="ask"><h2>{first} would like a coffee with you</h2><p>Say yes and you can pick a café and a time together.</p><div className="row"><form action={swipe.bind(null, id, true)}><SubmitButton className="primary">Accept</SubmitButton></form><form action={swipe.bind(null, id, false)}><SubmitButton>Not now</SubmitButton></form></div></div>
+            : <div className="ask"><h2>Ask {first} for a coffee</h2><p>They will see your request and can say yes or not now. If it's a yes, you choose a public café together.</p><div className="row"><form action={swipe.bind(null, id, true)}><SubmitButton className="primary">Ask for a coffee</SubmitButton></form><form action={swipe.bind(null, id, false)}><SubmitButton>Not now</SubmitButton></form></div></div>}
+          {id !== me && <form action={toggleSave.bind(null, id)}><SubmitButton>{sv ? "Saved. Tap to remove" : "Save for later"}</SubmitButton></form>}
+          {id !== me && <div className="meta"><form action={blockUser.bind(null, id, "report")} {...quiet}><SubmitButton className="linkbtn">Report</SubmitButton></form>{" or "}<form action={blockUser.bind(null, id, "block")} {...quiet}><SubmitButton className="linkbtn">block this member</SubmitButton></form></div>}
+        </div>
       </article>
     </main>
   );

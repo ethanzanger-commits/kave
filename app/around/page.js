@@ -54,9 +54,9 @@ export default async function Around({ searchParams }) {
   const more = "/around?" + new URLSearchParams({ ...(q && { q }), ...(city && { city }), ...(industry && { industry }), ...(freeOnly && { free: "1" }), n: String(n + 30) }).toString();
   const Section = ({ title, note, list }) => list.length === 0 ? null : <section><h2>{title}</h2><p><small>{note}</small></p><ul className="people">{list.map((r) => <Person key={r.p.userId} r={r} />)}</ul></section>;
   return (
-    <main>
+    <main className="wide">
       <Nav />
-      <h1>People</h1>
+      <h1 className="display">People</h1>
       <p className="lead">{rows.length} {rows.length === 1 ? "member" : "members"} across Israel. Ask anyone for a coffee, or open their profile first.</p>
       <form method="get" role="search" action="/around">
         <label>Search<input type="search" name="q" defaultValue={q} placeholder="Name, skill or company, e.g. fintech partnerships" /></label>

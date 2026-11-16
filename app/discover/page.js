@@ -37,24 +37,27 @@ export default async function Discover() {
   const rank = (x) => score(mine, x.p) + learn(x.p, hist) + ((inv[x.p.userId] || 0) >= 5 ? 2 : 0) + (x.p.freeUntil && x.p.freeUntil > new Date() ? (free ? 4 : 2) : 0) + (overlap(mine, x.p).length ? 2 : 0) + ((win[x.p.userId] || []).length ? 6 : 0) + (isNewProfile(x.p) ? 2 : 0);
   const next = all.filter((x) => !seen.has(x.p.userId)).sort((a, b) => rank(b) - rank(a))[0];
   return (
-    <main>
+    <main className="wide">
       <Nav />
-      <p>{near} {near === 1 ? "person" : "people"} around {mine.neighborhood}.</p>
+      <p className="kicker">This week</p>
+      <p className="meta" style={{ marginTop: 0 }}>{near} {near === 1 ? "person" : "people"} around {mine.neighborhood}. <a href="/around">Browse everyone</a></p>
       <form action={toggleFree}><SubmitButton className={free ? "primary" : ""}>{free ? "You're free this week (tap to undo)" : "I'm free for coffee this week"}</SubmitButton></form>
       {g.locked ? <div className="card"><h2>Invite {g.need - g.invited} more to keep going</h2><p>You've used your {g.free} free coffee requests. <a href="/invite">Share your invite link</a> ({g.invited}/{g.need} joined)</p></div> : !next ? <p>You're all caught up. Invite people from My coffees to see more.</p> : (
-        <article className="profile">
+        <article className="profile split" style={{ marginTop: "1.2rem" }}>
           <a className="photo" href={"/member/" + next.p.userId}>{next.u.hasImage ? <img src={`/api/avatar/${next.p.userId}?v=${+new Date(next.p.updatedAt)}`} alt={`Photo of ${short(next.u.name, next.u.email)}`} referrerPolicy="no-referrer" /> : <div className="avatar">{short(next.u.name, next.u.email)[0]}</div>}</a>
-          <h2><a href={"/member/" + next.p.userId}>{short(next.u.name, next.u.email)}</a></h2>
+          <div className="body">
+          <h2 className="display" style={{ fontSize: "2.2rem" }}><a href={"/member/" + next.p.userId}>{short(next.u.name, next.u.email)}</a></h2>
           <p className="role">{[next.p.headline, next.p.company].filter(Boolean).join(" at ")}, {cityOf(next.p)}</p>
           <p><Flair cats={win[next.p.userId]} isNew={isNewProfile(next.p)} />{next.p.foundingNo && <span className="badge">Founding 50 #{next.p.foundingNo}</span>}{next.p.freeUntil && next.p.freeUntil > new Date() && <span className="chip">Free this week</span>}</p>
           {next.p.about && <p>{next.p.about}</p>}
           <Prompts p={next.p} />
-          <p className="why">{why(mine, next.p)}{overlap(mine, next.p).length > 0 ? ` You're both free ${overlap(mine, next.p).join(", ")}.` : ""}</p>
+          <p className="why"><b>Why you two?</b> {why(mine, next.p)}{overlap(mine, next.p).length > 0 ? ` You're both free ${overlap(mine, next.p).join(", ")}.` : ""}</p>
           <div className="row">
             <form action={swipe.bind(null, next.p.userId, true)}><SubmitButton className="primary">Ask for a coffee</SubmitButton></form>
             <form action={swipe.bind(null, next.p.userId, false)}><SubmitButton>Not now</SubmitButton></form>
           </div>
           <p><small><a href={"/member/" + next.p.userId}>See full profile</a></small></p>
+          </div>
         </article>)}
     </main>
   );
