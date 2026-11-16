@@ -1,5 +1,6 @@
 "use server";
 import { auth, signOut } from "@/auth";
+import { cleanLinkedIn } from "@/lib/linkedin";
 import { db, client } from "@/db";
 import { awardFounding } from "@/lib/founding";
 import { AV_KEYS } from "@/lib/avail";
@@ -16,7 +17,7 @@ import { toggleSaved, joinCircle, savePushSub } from "@/lib/social";
 import { gate } from "@/lib/gate";
 import { and, eq, or, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-const li = (v) => (/^https:\/\/([a-z]{2,3}\.)?linkedin\.com\/in\//i.test(v || "") ? v : null);
+const li = cleanLinkedIn;
 const t = (v, n = 200) => (v ? String(v).slice(0, n) : null);
 export async function saveProfile(d) {
   const s = await auth(); if (!s) throw new Error("Sign in first");
@@ -32,6 +33,8 @@ export async function saveProfile(d) {
     education: (d.education || []).slice(0, 10), updatedAt: new Date() };
   const ref = (await cookies()).get("ref")?.value; let invitedBy = null;
   if (ref) { const [o] = await db.select({ u: profiles.userId }).from(profiles).where(eq(profiles.refCode, ref)); if (o && o.u !== s.user.id) invitedBy = o.u; }
+  const [sa] = await client`select "referrerId" from signup_attr where "userId" = ${s.user.id}`.catch(() => []);
+  if (sa?.referrerId && sa.referrerId !== s.user.id) invitedBy = sa.referrerId;
   if (!invitedBy) { const [ru0] = await client`select "referredBy" from "user" where id = ${s.user.id}`; if (ru0?.referredBy && ru0.referredBy !== s.user.id) invitedBy = ru0.referredBy; }
   const [prev] = await db.select().from(profiles).where(eq(profiles.userId, s.user.id));
   const first = !prev?.ageOk;
@@ -61,13 +64,13 @@ export async function swipe(to, yes) {
   if (yes) {
     const [back] = await db.select().from(swipes).where(and(eq(swipes.from, to), eq(swipes.to, me), eq(swipes.yes, true)));
     const ex = await db.select().from(matches).where(or(and(eq(matches.a, me), eq(matches.b, to)), and(eq(matches.a, to), eq(matches.b, me))));
-    if (!back && !to.startsWith("demo-")) { const [ru] = await db.select().from(users).where(eq(users.id, to)); await sendTemplate(ru?.email, "coffeeRequest", { from: short(s.user.name, s.user.email), base: base() }); await notify(to, short(s.user.name, s.user.email) + " would like to grab coffee", "Open Kave to accept or decline.", "/matches"); }
+    if (!back && !to.startsWith("demo-")) { const [ru] = await db.select().from(users).where(eq(users.id, to)); await sendTemplate(ru?.email, "coffeeRequest", { from: short(s.user.name, s.user.email), base: base(), link: `${base()}/member/${me}` }); await notify(to, short(s.user.name, s.user.email) + " would like to grab coffee", "Open Kave to accept or decline.", "/matches"); }
     if ((back || to.startsWith("demo-")) && !ex.length) {
-      await db.insert(matches).values({ a: me, b: to });
+      const [nm] = await db.insert(matches).values({ a: me, b: to }).returning();
       await track(me, "matched"); await track(to, "matched");
       if (back) {
         const us = await db.select().from(users).where(inArray(users.id, [me, to]));
-        for (const u of us) { await notify(u.id, "It's a match", "Pick a time and place for your coffee.", "/matches"); await sendTemplate(u.email, "match", { other: short(us.find((x) => x.id !== u.id)?.name, us.find((x) => x.id !== u.id)?.email), base: base() }); }
+        for (const u of us) { await notify(u.id, "It's a match", "Pick a time and place for your coffee.", "/matches"); await sendTemplate(u.email, "match", { other: short(us.find((x) => x.id !== u.id)?.name, us.find((x) => x.id !== u.id)?.email), base: base(), link: nm ? `${base()}/coffee/${nm.id}` : undefined }); }
       }
     }
   }
@@ -79,7 +82,7 @@ export async function schedule(fd) {
   if (!m || (m.a !== s.user.id && m.b !== s.user.id)) throw new Error("Not your match");
   await db.update(matches).set({ when: t(fd.get("when"), 80), place: t(fd.get("place"), 80), status: "proposed", proposedBy: s.user.id, reminded: false }).where(eq(matches.id, id));
   const [ou] = await db.select().from(users).where(eq(users.id, m.a === s.user.id ? m.b : m.a));
-  await sendTemplate(ou?.email, "coffeeProposed", { from: short(s.user.name, s.user.email), when: fmt(fd.get("when")), place: fd.get("place"), base: base() }); await notify(ou?.id, short(s.user.name, s.user.email) + " suggested a coffee", "Accept or change the plan.", "/matches");
+  await sendTemplate(ou?.email, "coffeeProposed", { from: short(s.user.name, s.user.email), when: fmt(fd.get("when")), place: fd.get("place"), base: base(), link: `${base()}/coffee/${id}` }); await notify(ou?.id, short(s.user.name, s.user.email) + " suggested a coffee", "Accept or change the plan.", "/matches");
   revalidatePath("/matches");
 }
 export async function loadDemo() {
@@ -136,7 +139,7 @@ export async function sendThanks(fd) {
 }
 
 export async function trackEvent(name) {
-  const s = await auth(); if (!s || !["invite_shared", "card_shared"].includes(name)) return;
+  const s = await auth(); if (!s || !["invite_shared", "card_shared", "linkedin_shared"].includes(name)) return;
   await track(s.user.id, name);
 }
 
@@ -150,7 +153,7 @@ export async function respond(fd) {
   else if (act === "cancel") await db.update(matches).set({ status: null, when: null, place: null, proposedBy: null }).where(eq(matches.id, id));
   else return;
   const [ou] = await db.select().from(users).where(eq(users.id, other));
-  await sendTemplate(ou?.email, act === "accept" ? "coffeeConfirmed" : "coffeeCancelled", { from: short(s.user.name, s.user.email), base: base() }); await notify(ou?.id, act === "accept" ? "Coffee confirmed" : "Coffee cancelled", short(s.user.name, s.user.email), "/matches");
+  await sendTemplate(ou?.email, act === "accept" ? "coffeeConfirmed" : "coffeeCancelled", { from: short(s.user.name, s.user.email), base: base(), link: `${base()}/coffee/${id}` }); await notify(ou?.id, act === "accept" ? "Coffee confirmed" : "Coffee cancelled", short(s.user.name, s.user.email), "/matches");
   revalidatePath("/matches");
 }
 export async function sendMessage(fd) {
@@ -161,7 +164,7 @@ export async function sendMessage(fd) {
   await db.insert(messages).values({ matchId: id, fromId: s.user.id, text });
   if (!prev || prev.fromId !== s.user.id) {
     const [ou] = await db.select().from(users).where(eq(users.id, m.a === s.user.id ? m.b : m.a));
-    await sendTemplate(ou?.email, "newMessage", { from: short(s.user.name, s.user.email), text, base: base() }); await notify(ou?.id, "New message from " + short(s.user.name, s.user.email), String(text).slice(0, 80), "/matches");
+    await sendTemplate(ou?.email, "newMessage", { from: short(s.user.name, s.user.email), text, base: base(), link: `${base()}/coffee/${id}` }); await notify(ou?.id, "New message from " + short(s.user.name, s.user.email), String(text).slice(0, 80), "/matches");
   }
   await track(s.user.id, "message_sent"); revalidatePath("/matches");
 }
@@ -181,7 +184,7 @@ export async function makeIntro(fd) {
   if (!ok(x) || !ok(y)) return;
   await db.insert(intros).values({ byId: me, a: x, b: y, note: t(fd.get("note"), 200) });
   const us = await db.select().from(users).where(inArray(users.id, [x, y]));
-  for (const u of us) await sendTemplate(u.email, "intro", { by: short(s.user.name, s.user.email), other: short(us.find((z) => z.id !== u.id)?.name, us.find((z) => z.id !== u.id)?.email), base: base() });
+  for (const u of us) await sendTemplate(u.email, "intro", { by: short(s.user.name, s.user.email), other: short(us.find((z) => z.id !== u.id)?.name, us.find((z) => z.id !== u.id)?.email), base: base(), link: `${base()}/member/${us.find((z) => z.id !== u.id)?.id}` });
   await track(me, "intro_made"); revalidatePath("/matches");
 }
 export async function answerIntro(fd) {

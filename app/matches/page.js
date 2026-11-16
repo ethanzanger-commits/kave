@@ -1,4 +1,5 @@
 import Prompts from "../Prompts";
+import SubmitButton from "@/app/SubmitButton";
 import Nav from "../Nav";
 import { short } from "@/lib/leaders";
 import { auth } from "@/auth";
@@ -10,6 +11,7 @@ import { redirect } from "next/navigation";
 import { schedule, blockUser, checkIn, sendThanks, respond, sendMessage, makeIntro, answerIntro, swipe, hideThanks } from "../actions";
 import BookForm from "../BookForm";
 import { starters } from "@/lib/match";
+import LinkedInButton from "../LinkedInButton";
 import { cafePins } from "@/lib/cafes";
 import { fmt, gcal } from "@/lib/fmt";
 export default async function Matches() {
@@ -39,20 +41,20 @@ export default async function Matches() {
       <p>{ms.length} matches · {ms.filter((m) => m.when && m.status !== "proposed").length} coffees booked · {ms.filter((x) => x.met === true).length} coffees had · {invited} friends invited</p>
       {near.length > 0 && <p>Cafés near {mine.neighborhood}: {near.join(", ")}. <small>Map data © OpenStreetMap contributors</small></p>}
       <datalist id="cafes">{near.map((c) => <option key={c} value={c} />)}</datalist>
-      <p>Your invite link: <b>{host}/join?ref={mine?.refCode}</b> · <a href={`https://wa.me/?text=${encodeURIComponent("Join me on kave: https://" + host + "/join?ref=" + mine?.refCode)}`}>Share on WhatsApp</a></p>
+      <p>Your invite link: <b>{host}/join?ref={mine?.refCode}</b> · <a href={`https://wa.me/?text=${encodeURIComponent("Join me on kave: https://" + host + "/join?ref=" + mine?.refCode)}`}>Share on WhatsApp</a> · <LinkedInButton text={"I'm on Kave, a coffee-matching community for Israeli tech. Join me: https://" + host + "/join?ref=" + mine?.refCode}>Post on LinkedIn</LinkedInButton></p>
       {incoming.length > 0 && <div className="card"><h2>Coffee requests</h2>{incoming.map((x) => <div key={x.from} style={{ margin: ".6rem 0" }}><p style={{ margin: 0 }}><b>{names[x.from] || "Someone"}</b> would like to grab coffee.</p>
-        <div className="row"><form action={swipe.bind(null, x.from, true)}><button className="primary">Accept</button></form><form action={swipe.bind(null, x.from, false)}><button>Decline</button></form></div></div>)}</div>}
+        <div className="row"><form action={swipe.bind(null, x.from, true)}><SubmitButton className="primary">Accept</SubmitButton></form><form action={swipe.bind(null, x.from, false)}><SubmitButton>Decline</SubmitButton></form></div></div>)}</div>}
       {outgoing.length > 0 && <p>Waiting on a reply from: {outgoing.map((x) => names[x.to] || "someone").join(", ")}</p>}
       {ints.map((i) => { const other = i.a === me ? i.b : i.a; return (
         <div className="card" key={i.id}><h2>Introduction</h2>
           <p>{names[i.byId]} thinks you'd get on with <b>{names[other]}</b>.{i.note ? ` "${i.note}"` : ""}</p>
-          <div className="row"><form action={answerIntro}><input type="hidden" name="id" value={i.id} /><input type="hidden" name="yes" value="1" /><button className="primary">Yes, intro us</button></form>
-            <form action={answerIntro}><input type="hidden" name="id" value={i.id} /><input type="hidden" name="yes" value="0" /><button>Pass</button></form></div></div>); })}
+          <div className="row"><form action={answerIntro}><input type="hidden" name="id" value={i.id} /><input type="hidden" name="yes" value="1" /><SubmitButton className="primary">Yes, intro us</SubmitButton></form>
+            <form action={answerIntro}><input type="hidden" name="id" value={i.id} /><input type="hidden" name="yes" value="0" /><SubmitButton>Pass</SubmitButton></form></div></div>); })}
       {metPeople.length > 1 && <details className="card"><summary><b>Introduce two people you've met</b></summary>
         <form action={makeIntro}>
           <label>Person one<select name="a">{metPeople.map((id) => <option key={id} value={id}>{names[id]}</option>)}</select></label>
           <label>Person two<select name="b">{metPeople.map((id) => <option key={id} value={id}>{names[id]}</option>)}</select></label>
-          <input name="note" maxLength={200} placeholder="Why they'd click (optional)" /><p></p><button className="primary">Send introduction</button>
+          <input name="note" maxLength={200} placeholder="Why they'd click (optional)" /><p></p><SubmitButton className="primary">Send introduction</SubmitButton>
         </form></details>}
       {ms.length === 0 && <p>No matches yet. Say Coffee? to a few people on Discover.</p>}
       {ms.map((m) => {
@@ -62,29 +64,29 @@ export default async function Matches() {
             {o.u.image ? <img src={o.u.image} alt="" width="56" height="56" referrerPolicy="no-referrer" style={{ borderRadius: 2 }} /> : <div className="avatar">{(o.u.name || "?")[0]}</div>}
             <h2>{short(o.u.name, o.u.email)}</h2><p>{o.p.headline}</p>{o.p.about && <p>{o.p.about}</p>}
             <Prompts p={o.p} />
-            <div className="row"><form action={blockUser.bind(null, o.p.userId, "block")}><button>Block</button></form><form action={blockUser.bind(null, o.p.userId, "report")}><button>Report</button></form></div>
+            <div className="row"><form action={blockUser.bind(null, o.p.userId, "block")}><SubmitButton>Block</SubmitButton></form><form action={blockUser.bind(null, o.p.userId, "report")}><SubmitButton>Report</SubmitButton></form></div>
             <div>
               {msgs.filter((x) => x.matchId === m.id).sort((x, y) => x.at - y.at).slice(-5).map((x) => <p key={x.id} className={x.fromId === me ? "" : "why"} style={{ margin: ".3rem 0" }}><b>{x.fromId === me ? "You" : short(o.u.name, o.u.email)}:</b> {x.text}</p>)}
-              <form action={sendMessage}><input type="hidden" name="id" value={m.id} /><input name="text" maxLength={500} placeholder="Say hi, one line" required /><p></p><button>Send</button></form>
+              <form action={sendMessage}><input type="hidden" name="id" value={m.id} /><input name="text" maxLength={500} placeholder="Say hi, one line" required /><p></p><SubmitButton>Send</SubmitButton></form>
             </div>
             <p><b>Topics to get you talking</b></p><ul>{starters(mine, o.p).map((q) => <li key={q}>{q}</li>)}</ul>
             {m.when && m.status !== "proposed" ? <>
               <p>Booked: {fmt(m.when)} at {m.place}. <a href={`/card/${m.id}`}>Coffee card</a>{" · "}<a href={`/coffee/${m.id}`}>Cheat sheet</a>{" · "}
-                <a href={`https://wa.me/?text=${encodeURIComponent("Coffee booked on kave https://" + host + "/card/" + m.id)}`}>WhatsApp</a>
+                <a href={`https://wa.me/?text=${encodeURIComponent("Coffee booked on kave https://" + host + "/card/" + m.id)}`}>WhatsApp</a>{" · "}<LinkedInButton text={"Coffee booked on Kave, meeting someone new from outside my network: https://" + host + "/card/" + m.id}>LinkedIn</LinkedInButton>
                 {gcal(m) && <>{" · "}<a href={gcal(m)}>Add to calendar</a></>}</p>
               {m.place && <><iframe title={"Map of " + m.place} src={"https://www.google.com/maps?q=" + encodeURIComponent(m.place + " " + (mine?.neighborhood || "")) + "&output=embed"} width="100%" height="200" loading="lazy" style={{ border: 0, borderRadius: 16 }} referrerPolicy="no-referrer-when-downgrade" />
                 <p><a href={"https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(m.place + " " + (mine?.neighborhood || ""))} target="_blank" rel="noopener noreferrer">Get directions</a></p></>}
-              {new Date(m.when) > new Date() && <form action={respond}><input type="hidden" name="id" value={m.id} /><button name="a" value="cancel">Cancel this coffee</button></form>}
+              {new Date(m.when) > new Date() && <form action={respond}><input type="hidden" name="id" value={m.id} /><SubmitButton name="a" value="cancel">Cancel this coffee</SubmitButton></form>}
               {m.met == null && new Date(m.when) < new Date() && <form action={checkIn}><input type="hidden" name="id" value={m.id} /><p>Did it happen?</p>
-                <button name="met" value="yes">Yes, we met</button><button name="met" value="no">It didn't happen</button></form>}
+                <SubmitButton name="met" value="yes">Yes, we met</SubmitButton><SubmitButton name="met" value="no">It didn't happen</SubmitButton></form>}
               {m.met === true && <>
-                {th.filter((x) => x.fromId !== me).map((x) => <div key={x.fromId}><p className="why">{x.text}</p>{x.isPublic && !x.hidden && <form action={hideThanks}><input type="hidden" name="id" value={m.id} /><button>Hide from my profile</button></form>}</div>)}
-                {!th.some((x) => x.fromId === me) && <form action={sendThanks}><input type="hidden" name="id" value={m.id} /><input name="text" maxLength={140} placeholder="Say thanks in one line" required /><label style={{ display: "flex", gap: ".5rem", alignItems: "center", fontWeight: 400 }}><input type="checkbox" name="public" style={{ width: "auto", minHeight: 0, margin: 0 }} />Also show it on their profile</label><button>Send thanks</button></form>}
+                {th.filter((x) => x.fromId !== me).map((x) => <div key={x.fromId}><p className="why">{x.text}</p>{x.isPublic && !x.hidden && <form action={hideThanks}><input type="hidden" name="id" value={m.id} /><SubmitButton>Hide from my profile</SubmitButton></form>}</div>)}
+                {!th.some((x) => x.fromId === me) && <form action={sendThanks}><input type="hidden" name="id" value={m.id} /><input name="text" maxLength={140} placeholder="Say thanks in one line" required /><label style={{ display: "flex", gap: ".5rem", alignItems: "center", fontWeight: 400 }}><input type="checkbox" name="public" style={{ width: "auto", minHeight: 0, margin: 0 }} />Also show it on their profile</label><SubmitButton>Send thanks</SubmitButton></form>}
               </>}
               {m.met === false && <p>Thanks for checking in.</p>}
             </> : (
               <>{m.status === "proposed" && <div className="why"><p style={{ margin: 0 }}>{m.proposedBy === me ? "Waiting for them to accept" : "They proposed"}: {fmt(m.when)} at {m.place}</p>
-                <form action={respond}><input type="hidden" name="id" value={m.id} />{m.proposedBy !== me && <button name="a" value="accept" className="primary">Accept</button>}<button name="a" value="cancel">{m.proposedBy === me ? "Cancel" : "Decline"}</button></form></div>}
+                <form action={respond}><input type="hidden" name="id" value={m.id} />{m.proposedBy !== me && <SubmitButton name="a" value="accept" className="primary">Accept</SubmitButton>}<SubmitButton name="a" value="cancel">{m.proposedBy === me ? "Cancel" : "Decline"}</SubmitButton></form></div>}
                 <BookForm id={m.id} cafes={near} schedule={schedule} hood={mine?.neighborhood} center={pins.center} pins={pins.pins} /></>)}
           </div>);
       })}

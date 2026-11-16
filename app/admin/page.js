@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import SubmitButton from "@/app/SubmitButton";
 import { db } from "@/db";
 import { profiles, matches, swipes, blocks } from "@/schema";
 import { eq, sql } from "drizzle-orm";
@@ -16,11 +17,11 @@ export default async function Admin() {
   const active = await n(db.select({ c: sql`count(distinct ${swipes.from})` }).from(swipes));
   return (
     <main><h1>Admin</h1>
-      <p><a href="/admin/analytics">Analytics dashboard</a></p>
+      <p><a href="/admin/weekly">Weekly growth</a> · <a href="/admin/people">People to follow up</a> · <a href="/admin/experiments">Experiment log</a> · <a href="/admin/analytics">Analytics</a></p>
       <p>Real profiles: {real} · Demo people: {demo}</p>
       <p>Matches: {ms} · Coffees booked: {booked}</p>
       <p>Coffees that happened: {met} · Open reports: {reports}</p>
       <p>Coffees per active user: {active ? (booked / active).toFixed(2) : "0"}</p>
-      <form action={loadDemo}><button className="primary">Load 30 demo people</button></form></main>
+      <form action={loadDemo}><SubmitButton className="primary">Load 30 demo people</SubmitButton></form></main>
   );
 }

@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { matches, users, profiles } from "@/schema";
 import { eq, inArray } from "drizzle-orm";
-import { sendMail } from "@/lib/mail";
+import { sendLow } from "@/lib/mail";
 import { fmt } from "@/lib/fmt";
 import { cheatEmail } from "@/lib/cheat";
 import { copy } from "@/lib/emails";
@@ -16,7 +16,7 @@ export async function GET(req) {
   let sent = 0;
   for (const m of all.filter((x) => x.when.startsWith(day(864e5)) && !x.reminded)) {
     const us = await db.select().from(users).where(inArray(users.id, [m.a, m.b]));
-    for (const u of us) { await sendMail(u.email, ...copy("dayBefore", { other: short(us.find((x) => x.id !== u.id)?.name, us.find((x) => x.id !== u.id)?.email), when: fmt(m.when), place: m.place, base })); sent++; }
+    for (const u of us) { await sendLow(u.email, ...copy("dayBefore", { other: short(us.find((x) => x.id !== u.id)?.name, us.find((x) => x.id !== u.id)?.email), when: fmt(m.when), place: m.place, base, link: `${base}/coffee/${m.id}` })); sent++; }
     await db.update(matches).set({ reminded: true }).where(eq(matches.id, m.id));
   }
   for (const m of all.filter((x) => x.when.startsWith(day(0)) && !x.cheatSent)) {
@@ -25,7 +25,7 @@ export async function GET(req) {
     for (const u of us) {
       const me = ps.find((p) => p.userId === u.id), o = ps.find((p) => p.userId !== u.id), ou = us.find((x) => x.id !== u.id);
       if (!me || !o) continue;
-      { const nm = short(ou?.name, ou?.email); const [subj, intro] = copy("morningOf", { other: nm }); await sendMail(u.email, subj, intro + "\n\n" + cheatEmail(me, o, nm, m, base)); } sent++;
+      { const nm = short(ou?.name, ou?.email); const [subj, intro] = copy("morningOf", { other: nm }); await sendLow(u.email, subj, intro + "\n\n" + cheatEmail(me, o, nm, m, base)); } sent++;
     }
     await db.update(matches).set({ cheatSent: true }).where(eq(matches.id, m.id));
   }

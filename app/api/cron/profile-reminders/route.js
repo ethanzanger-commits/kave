@@ -1,5 +1,5 @@
 import { client } from "@/db";
-import { sendMail } from "@/lib/mail";
+import { sendLow } from "@/lib/mail";
 import { reminderCfg } from "@/lib/settings";
 import { sig } from "@/lib/unsub";
 import { missing } from "@/lib/complete";
@@ -27,7 +27,7 @@ export async function GET(req) {
     if ((step === 2 && taken >= 50) || (await isDone(u.id, u.image))) { await client`update reminder set status = 'skipped' where id = ${rid}`; skipped++; continue; }
     const link = `${base}/api/r?id=${rid}`, foot = `\n\nUnsubscribe from these reminders: ${base}/unsubscribe?e=${encodeURIComponent(u.email)}&t=${sig(u.email)}`;
     const [subj, body] = copy("reminder" + step, { link });
-    const ok = await sendMail(u.email, subj, body + foot);
+    const ok = await sendLow(u.email, subj, body + foot);
     if (ok) { await client`update reminder set status = 'sent', "sentAt" = now() where id = ${rid}`; sent++; }
     else { await client`update reminder set status = 'failed', error = 'send failed' where id = ${rid}`; failed++; }
   }

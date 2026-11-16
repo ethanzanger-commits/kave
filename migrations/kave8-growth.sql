@@ -1,5 +1,8 @@
 -- Growth tracking: acquisition source, referral attribution at sign-up, experiment log, and reporting views. Safe to run more than once.
 alter table "user" add column if not exists source text, add column if not exists "referredBy" text;
+create table if not exists signup_attr ("userId" text primary key, source text, ref text, "referrerId" text, at timestamp default now());
+create table if not exists intent (email text primary key, source text, ref text, at timestamp default now());
+create index if not exists signup_attr_referrer_idx on signup_attr ("referrerId");
 create index if not exists user_source_idx on "user" (source);
 create table if not exists experiment (id text primary key default gen_random_uuid()::text, name text not null, hypothesis text, channel text, "startsOn" date, "endsOn" date, metric text, result text, learnings text, status text not null default 'running', at timestamp default now());
 -- Existing referred members: credit the referrer at sign-up level too.

@@ -21,7 +21,7 @@ export async function GET(req) {
     if (!me.u.email || me.p.isDemo || me.p.weekly === false || out.has(me.u.email.toLowerCase())) continue;
     const pick = rows.filter((x) => x.p.userId !== me.p.userId && !x.p.isDemo && !seen[me.p.userId]?.has(x.p.userId)).sort((a, b) => score(me.p, b.p) + (b.p.freeUntil > new Date() ? 3 : 0) - score(me.p, a.p) - (a.p.freeUntil > new Date() ? 3 : 0))[0];
     if (!pick) continue;
-    await sendTemplate(me.u.email, "weekly", { first: (me.u.name || "").split(" ")[0], pick: short(pick.u.name, pick.u.email), headline: pick.p.headline, why: why(me.p, pick.p), base, unsub: `${base}/unsubscribe?e=${encodeURIComponent(me.u.email)}&t=${sig(me.u.email)}` }); await track(me.p.userId, "weekly_sent"); sent++;
+    await sendTemplate(me.u.email, "weekly", { first: (me.u.name || "").split(" ")[0], pick: short(pick.u.name, pick.u.email), headline: pick.p.headline, why: why(me.p, pick.p), base, link: `${base}/member/${pick.p.userId}`, unsub: `${base}/unsubscribe?e=${encodeURIComponent(me.u.email)}&t=${sig(me.u.email)}` }); await track(me.p.userId, "weekly_sent"); sent++;
   }
   return Response.json({ sent });
 }

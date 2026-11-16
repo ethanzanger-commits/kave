@@ -5,13 +5,15 @@
   "dev": "next dev",
   "build": "next build",
   "start": "next start",
-  "db:push": "drizzle-kit push"
+  "db:push": "drizzle-kit push",
+  "test:e2e": "playwright test"
  },
  "dependencies": {
   "@auth/drizzle-adapter": "^1.7.4",
   "@neon/config": "^1.11.3",
   "@neon/env": "^1.6.15",
   "@neondatabase/serverless": "^0.10.4",
+  "@sentry/nextjs": "^10.78.0",
   "@vercel/analytics": "^2.0.1",
   "drizzle-orm": "^0.38.0",
   "jszip": "^3.10.1",
@@ -22,11 +24,13 @@
   "nodemailer": "^6.9.16",
   "papaparse": "^5.4.1",
   "pdf-parse": "^1.1.1",
+  "posthog-js": "^1.449.2",
   "react": "^19.0.0",
   "react-dom": "^19.0.0",
   "web-push": "^4.0.0"
  },
  "devDependencies": {
+  "@playwright/test": "^1.65.1",
   "drizzle-kit": "^0.30.0"
  }
 }

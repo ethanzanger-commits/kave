@@ -1,27 +1,24 @@
-import { requireAdmin } from "@/lib/admin";
+import { auth } from "@/auth";
 import { client } from "@/db";
+import { redirect } from "next/navigation";
 import AdminNav from "../AdminNav";
-import { inactive, stalled, incomplete } from "@/lib/growth";
+import { incomplete, inactive } from "@/lib/growth";
 import { missing } from "@/lib/complete";
-export default async function People({ searchParams }) {
-  await requireAdmin();
-  const view = (await searchParams)?.view || "incomplete";
-  let rows = [], err = "";
-  try {
-    if (view === "inactive") rows = (await inactive(client, 14)).map((r) => ({ ...r, note: `last active ${r.days} days ago` }));
-    else if (view === "stalled") rows = (await stalled(client)).map((r) => ({ ...r, note: `finished ${r.days} days ago, no coffee request yet` }));
-    else rows = (await incomplete(client)).map((r) => ({ ...r, note: `joined ${r.days} days ago, missing ${missing(r, r.image).join(", ")}, ${r.reminders} reminders sent` }));
-  } catch { err = "Run migrations/kave8-growth.sql in Neon first, then reload."; }
-  const tab = (v, l) => <a className={v === view ? "chip" : "chip cafe"} href={"/admin/people?view=" + v}>{l}</a>;
+export const metadata = { title: "People · Admin", robots: { index: false } };
+export default async function People() {
+  const s = await auth();
+  if (!s || !process.env.ADMIN_EMAIL || s.user.email !== process.env.ADMIN_EMAIL) redirect("/");
+  let inc = [], ina = [], err = "";
+  try { [inc, ina] = await Promise.all([incomplete(client), inactive(client, 14)]); } catch { err = "Run migrations/kave8-growth.sql in Neon first, then reload."; }
   return (
     <main>
       <AdminNav />
-      <h1>People to reach</h1>
-      <p>{tab("incomplete", "Incomplete profiles")}{tab("stalled", "Finished, no coffee yet")}{tab("inactive", "Inactive 14+ days")}</p>
+      <h1>People to follow up</h1>
       {err && <p className="why">{err}</p>}
-      <p><b>{rows.length}</b> {rows.length === 1 ? "person" : "people"}. A personal message works better than a mass email.</p>
-      {rows.length > 0 && <><label>All emails (copy into the BCC field)<textarea readOnly rows={3} value={rows.map((r) => r.email).filter(Boolean).join(", ")} /></label>
-        <ul className="people">{rows.map((r) => <li key={r.id}><div className="info"><h3>{r.name || "No name"} <small>{r.source || "unknown source"}</small></h3><p><a href={"mailto:" + r.email}>{r.email}</a></p><p><small>{r.note}</small></p></div></li>)}</ul></>}
+      <section className="card"><h2>Unfinished profiles ({inc.length})</h2><p><small>Newest first. A personal message works best.</small></p>
+        {inc.slice(0, 40).map((r) => <p key={r.id} style={{ margin: ".6rem 0" }}><b>{r.name || "No name"}</b>, <a href={"mailto:" + r.email}>{r.email}</a><br /><small>{Math.floor(r.days)} days ago, via {r.source}. Missing: {missing(r, r.image).join(", ")}. {r.rem} reminders sent.</small></p>)}</section>
+      <section className="card"><h2>Quiet members ({ina.length})</h2><p><small>Finished profiles with no activity for 14 days.</small></p>
+        {ina.slice(0, 40).map((r) => <p key={r.id} style={{ margin: ".6rem 0" }}><b>{r.name || "No name"}</b>, <a href={"mailto:" + r.email}>{r.email}</a><br /><small>Last seen {Math.floor(r.idle_days)} days ago.</small></p>)}</section>
     </main>
   );
 }
