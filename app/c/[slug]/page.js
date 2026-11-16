@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import SubmitButton from "@/app/SubmitButton";
 import { client } from "@/db";
 import { notFound } from "next/navigation";
 import { circleMembers } from "@/lib/social";
@@ -21,9 +22,9 @@ export default async function CirclePage({ params }) {
       <p className="lead">{c.blurb}</p>
       <p><b>{members.length}</b> {members.length === 1 ? "member" : "members"}</p>
       {!me ? <a className="cta" href={`/c/${slug}/join`}>Join Kave and this circle</a>
-        : !isMember ? <form action={joinCircleAction.bind(null, slug)}><button className="primary">Join this circle</button></form>
+        : !isMember ? <form action={joinCircleAction.bind(null, slug)}><SubmitButton className="primary">Join this circle</SubmitButton></form>
         : <><ul className="people">{members.map((m) => <li key={m.id}><a href={"/member/" + m.id}>{m.image ? <img src={m.image} alt="" width="64" height="64" referrerPolicy="no-referrer" /> : <div className="avatar">{short(m.name, m.email)[0]}</div>}</a><div className="info"><h3><a href={"/member/" + m.id}>{short(m.name, m.email)}</a></h3><p>{[m.headline, m.city].filter(Boolean).join(", ")}</p></div></li>)}</ul>
-          <form action={leaveCircle.bind(null, slug)}><button>Leave this circle</button></form></>}
+          <form action={leaveCircle.bind(null, slug)}><SubmitButton>Leave this circle</SubmitButton></form></>}
     </main>
   );
 }

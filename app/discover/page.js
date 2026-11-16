@@ -1,4 +1,5 @@
 import Nav from "../Nav";
+import SubmitButton from "@/app/SubmitButton";
 import { overlap } from "@/lib/avail";
 import { missing } from "@/lib/complete";
 import { auth } from "@/auth";
@@ -8,7 +9,7 @@ import Prompts from "../Prompts";
 import { cityOf } from "@/lib/place";
 import { winnerMap, isNewProfile, short } from "@/lib/leaders";
 import { profiles, users, swipes, blocks, matches } from "@/schema";
-import { eq, ne, or, sql, isNotNull, inArray } from "drizzle-orm";
+import { eq, ne, or, sql, isNotNull, inArray, getTableColumns } from "drizzle-orm";
 import { tierFor } from "@/lib/rewards";
 import { redirect } from "next/navigation";
 import { swipe, blockUser, toggleFree } from "../actions";
@@ -23,7 +24,9 @@ export default async function Discover() {
   const free = mine.freeUntil && mine.freeUntil > new Date();
   const g = await gate(me, s.user.email); const host = (await headers()).get("host");
   const seen = new Set((await db.select({ t: swipes.to }).from(swipes).where(eq(swipes.from, me))).map((x) => x.t));
-  const all = (await db.select({ p: profiles, u: users }).from(profiles).innerJoin(users, eq(users.id, profiles.userId)).where(ne(profiles.userId, me)).limit(300)).filter((r) => r.p.ageOk && r.p.about);
+  const { image: _i, ...uCols } = getTableColumns(users);
+  const uLite = { ...uCols, hasImage: sql`(${users.image} is not null)`.mapWith(Boolean) };
+  const all = (await db.select({ p: profiles, u: uLite }).from(profiles).innerJoin(users, eq(users.id, profiles.userId)).where(ne(profiles.userId, me)).limit(300)).filter((r) => r.p.ageOk && r.p.about);
   const bl = await db.select().from(blocks).where(or(eq(blocks.from, me), eq(blocks.to, me))); bl.forEach((b) => seen.add(b.from === me ? b.to : b.from));
   const near = all.filter((x) => x.p.neighborhood === mine.neighborhood).length;
   const inv = Object.fromEntries((await db.select({ u: profiles.invitedBy, c: sql`count(*)` }).from(profiles).where(isNotNull(profiles.invitedBy)).groupBy(profiles.invitedBy)).map((r) => [r.u, Number(r.c)]));
@@ -38,10 +41,10 @@ export default async function Discover() {
       <Nav />
       <p className="kicker">This week</p>
       <p className="meta" style={{ marginTop: 0 }}>{near} {near === 1 ? "person" : "people"} around {mine.neighborhood}. <a href="/around">Browse everyone</a></p>
-      <form action={toggleFree}><button className={free ? "primary" : ""}>{free ? "You're free this week (tap to undo)" : "I'm free for coffee this week"}</button></form>
+      <form action={toggleFree}><SubmitButton className={free ? "primary" : ""}>{free ? "You're free this week (tap to undo)" : "I'm free for coffee this week"}</SubmitButton></form>
       {g.locked ? <div className="card"><h2>Invite {g.need - g.invited} more to keep going</h2><p>You've used your {g.free} free coffee requests. <a href="/invite">Share your invite link</a> ({g.invited}/{g.need} joined)</p></div> : !next ? <p>You're all caught up. Invite people from My coffees to see more.</p> : (
         <article className="profile split" style={{ marginTop: "1.2rem" }}>
-          <a className="photo" href={"/member/" + next.p.userId}>{next.u.image ? <img src={next.u.image} alt={`Photo of ${short(next.u.name, next.u.email)}`} referrerPolicy="no-referrer" /> : <div className="avatar">{short(next.u.name, next.u.email)[0]}</div>}</a>
+          <a className="photo" href={"/member/" + next.p.userId}>{next.u.hasImage ? <img src={`/api/avatar/${next.p.userId}?v=${+new Date(next.p.updatedAt)}`} alt={`Photo of ${short(next.u.name, next.u.email)}`} referrerPolicy="no-referrer" /> : <div className="avatar">{short(next.u.name, next.u.email)[0]}</div>}</a>
           <div className="body">
           <h2 className="display" style={{ fontSize: "2.2rem" }}><a href={"/member/" + next.p.userId}>{short(next.u.name, next.u.email)}</a></h2>
           <p className="role">{[next.p.headline, next.p.company].filter(Boolean).join(" at ")}, {cityOf(next.p)}</p>
@@ -50,8 +53,8 @@ export default async function Discover() {
           <Prompts p={next.p} />
           <p className="why"><b>Why you two?</b> {why(mine, next.p)}{overlap(mine, next.p).length > 0 ? ` You're both free ${overlap(mine, next.p).join(", ")}.` : ""}</p>
           <div className="row">
-            <form action={swipe.bind(null, next.p.userId, true)}><button className="primary">Ask for a coffee</button></form>
-            <form action={swipe.bind(null, next.p.userId, false)}><button>Not now</button></form>
+            <form action={swipe.bind(null, next.p.userId, true)}><SubmitButton className="primary">Ask for a coffee</SubmitButton></form>
+            <form action={swipe.bind(null, next.p.userId, false)}><SubmitButton>Not now</SubmitButton></form>
           </div>
           <p><small><a href={"/member/" + next.p.userId}>See full profile</a></small></p>
           </div>

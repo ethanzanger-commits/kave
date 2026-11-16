@@ -1,4 +1,5 @@
 import AdminNav from "../AdminNav";
+import SubmitButton from "@/app/SubmitButton";
 import { auth } from "@/auth";
 import { client } from "@/db";
 import { redirect } from "next/navigation";
@@ -11,7 +12,7 @@ export default async function AdminCircles() {
     <main>
       <AdminNav />
       <h1>Circles</h1>
-      <form action={createCircle}><label>Name<input name="name" required maxLength={60} placeholder="Olim in tech" /></label><label>One-line description<input name="blurb" maxLength={200} placeholder="Newcomers working in Israeli tech" /></label><p></p><button className="primary">Create circle</button></form>
+      <form action={createCircle}><label>Name<input name="name" required maxLength={60} placeholder="Olim in tech" /></label><label>One-line description<input name="blurb" maxLength={200} placeholder="Newcomers working in Israeli tech" /></label><p></p><SubmitButton className="primary">Create circle</SubmitButton></form>
       <div className="card"><h2>Existing circles</h2>{list.length === 0 ? <p>None yet. Run migrations/kave7-community.sql if this page errors.</p> : list.map((c) => <p key={c.slug}><a href={"/c/" + c.slug}>{c.name}</a> ({c.n} members). Invite link: /c/{c.slug}/join</p>)}</div>
     </main>
   );

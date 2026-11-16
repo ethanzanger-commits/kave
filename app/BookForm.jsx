@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import SubmitButton from "./SubmitButton";
 import dynamic from "next/dynamic";
 const CafeMap = dynamic(() => import("./CafeMap"), { ssr: false });
 export default function BookForm({ id, cafes, schedule, hood, center, pins }) {
@@ -15,7 +16,7 @@ export default function BookForm({ id, cafes, schedule, hood, center, pins }) {
       <input name="place" value={place} onChange={(e) => setPlace(e.target.value)} placeholder="Which café?" required />
       {place && <p><a href={"https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(place + " " + (hood || ""))} target="_blank" rel="noopener noreferrer">Check it on Google Maps</a></p>}
       <input name="when" type="datetime-local" required />
-      <p></p><button className="primary">Book coffee </button>
+      <p></p><SubmitButton className="primary">Book coffee</SubmitButton>
     </form>
   );
 }

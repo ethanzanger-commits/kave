@@ -1,4 +1,5 @@
 import AdminNav from "../AdminNav";
+import SubmitButton from "@/app/SubmitButton";
 import { auth } from "@/auth";
 import { client } from "@/db";
 import { redirect } from "next/navigation";
@@ -67,12 +68,12 @@ export default async function Growth() {
           <Row k="Sent" v={m.r_sent} sub={m.r_failed + " failed"} />
           <Row k="Link clicks" v={m.r_clicks} />
           <Row k="Completed after a reminder" v={m.r_done} />
-          <form action={toggleReminders}><button className={cfg.paused ? "primary" : ""}>{cfg.paused ? "Paused. Tap to resume" : "Running. Tap to pause"}</button></form>
+          <form action={toggleReminders}><SubmitButton className={cfg.paused ? "primary" : ""}>{cfg.paused ? "Paused. Tap to resume" : "Running. Tap to pause"}</SubmitButton></form>
           <form action={saveReminderSettings}>
             <label>First reminder (hours after sign-up)<input name="h1" type="number" min="1" defaultValue={cfg.h1} /></label>
             <label>Second reminder (hours)<input name="h2" type="number" min="1" defaultValue={cfg.h2} /></label>
             <label>Third reminder (hours)<input name="h3" type="number" min="1" defaultValue={cfg.h3} /></label>
-            <p></p><button>Save timing</button></form></div>
+            <p></p><SubmitButton>Save timing</SubmitButton></form></div>
       </>}
       {total > 0 && <>
         <div className="card"><h2>Onboarding drop-off</h2>

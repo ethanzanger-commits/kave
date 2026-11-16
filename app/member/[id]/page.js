@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import SubmitButton from "@/app/SubmitButton";
 import { db, client } from "@/db";
 import { profiles, users, swipes, matches } from "@/schema";
 import { and, eq, or } from "drizzle-orm";
@@ -46,16 +47,18 @@ export default async function Member({ params }) {
           {p.about && <p style={{ fontSize: "1.1rem", maxWidth: "36rem" }}>{p.about}</p>}
           <Prompts p={p} />
           {endorse.length > 0 && <section><h2>What people say</h2>{endorse.map((e, i) => <p key={i}>&ldquo;{e.text}&rdquo; <small>{short(e.name, e.email)}</small></p>)}</section>}
+          {me !== p.userId && <a className="cta li" href={`/messages/with/${p.userId}`}>Message {first}</a>}
+          {p.linkedinUrl && <a className="cta li" href={p.linkedinUrl} target="_blank" rel="noopener noreferrer">View {first} on LinkedIn</a>}
           {(p.skills || []).length > 0 && <p>{p.skills.slice(0, 8).map((x) => <span className="chip" key={x}>{x}</span>)}</p>}
           {avail.length > 0 && <p className="meta">Usually free for coffee {avail.join(", ")}.</p>}
           {id !== me && <p className="why"><b>Why you two?</b> {why(mine || {}, p)}{common.length > 0 ? ` You're both free ${common.join(", ")}.` : ""}</p>}
           {id === me ? <p><a href="/profile">Edit your profile</a></p>
             : m ? <a className="cta" href="/matches">You're matched. Open your coffee</a>
             : mineSw?.yes ? <p className="why">You've asked {first} for a coffee. We'll email you when they reply.</p>
-            : theirSw?.yes && !mineSw ? <div className="ask"><h2>{first} would like a coffee with you</h2><p>Say yes and you can pick a café and a time together.</p><div className="row"><form action={swipe.bind(null, id, true)}><button className="primary">Accept</button></form><form action={swipe.bind(null, id, false)}><button>Not now</button></form></div></div>
-            : <div className="ask"><h2>Ask {first} for a coffee</h2><p>They will see your request and can say yes or not now. If it's a yes, you choose a public café together.</p><div className="row"><form action={swipe.bind(null, id, true)}><button className="primary">Ask for a coffee</button></form><form action={swipe.bind(null, id, false)}><button>Not now</button></form></div></div>}
-          {id !== me && <form action={toggleSave.bind(null, id)}><button>{sv ? "Saved. Tap to remove" : "Save for later"}</button></form>}
-          {id !== me && <div className="meta"><form action={blockUser.bind(null, id, "report")} {...quiet}><button className="linkbtn">Report</button></form>{" or "}<form action={blockUser.bind(null, id, "block")} {...quiet}><button className="linkbtn">block this member</button></form></div>}
+            : theirSw?.yes && !mineSw ? <div className="ask"><h2>{first} would like a coffee with you</h2><p>Say yes and you can pick a café and a time together.</p><div className="row"><form action={swipe.bind(null, id, true)}><SubmitButton className="primary">Accept</SubmitButton></form><form action={swipe.bind(null, id, false)}><SubmitButton>Not now</SubmitButton></form></div></div>
+            : <div className="ask"><h2>Ask {first} for a coffee</h2><p>They will see your request and can say yes or not now. If it's a yes, you choose a public café together.</p><div className="row"><form action={swipe.bind(null, id, true)}><SubmitButton className="primary">Ask for a coffee</SubmitButton></form><form action={swipe.bind(null, id, false)}><SubmitButton>Not now</SubmitButton></form></div></div>}
+          {id !== me && <form action={toggleSave.bind(null, id)}><SubmitButton>{sv ? "Saved. Tap to remove" : "Save for later"}</SubmitButton></form>}
+          {id !== me && <div className="meta"><form action={blockUser.bind(null, id, "report")} {...quiet}><SubmitButton className="linkbtn">Report</SubmitButton></form>{" or "}<form action={blockUser.bind(null, id, "block")} {...quiet}><SubmitButton className="linkbtn">block this member</SubmitButton></form></div>}
         </div>
       </article>
     </main>

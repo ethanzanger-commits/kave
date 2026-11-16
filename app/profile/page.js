@@ -1,4 +1,5 @@
 import Nav from "../Nav";
+import SubmitButton from "@/app/SubmitButton";
 import ShareCard from "../ShareCard";
 import { auth, signOut } from "@/auth";
 import { db, client } from "@/db";
@@ -28,14 +29,14 @@ export default async function Profile() {
   const miss = missing(p, u?.image);
   const stats = await communityStats(client);
   const win = await winnerMap(client);
-  const done = Math.round(((6 - miss.length) / 6) * 100);
-  const sw = (await db.select().from(swipes).where(eq(swipes.from, id))).length;
+    const sw = (await db.select().from(swipes).where(eq(swipes.from, id))).length;
   const ms = await db.select().from(matches).where(or(eq(matches.a, id), eq(matches.b, id)));
   const step = miss.length ? ["Finish your profile", `Still needed: ${miss.join(", ")}. Then you can start meeting people.`, ""]
     : sw === 0 ? ["Meet your first people", "Go to Discover and tap Coffee? on someone who looks interesting.", "/discover"]
     : ms.length === 0 ? ["Waiting for a match", "A match needs both people to say yes. Invite friends so there are more people to meet.", "/invite"]
     : !ms.some((m) => m.when && m.status !== "proposed") ? ["Book your coffee", "Open My coffees, pick a café and a time.", "/matches"]
     : ["Bring someone along", "Invite friends and earn badges.", "/invite"];
+  const setup = miss.length > 0;
   const linked = (await db.select().from(accounts).where(and(eq(accounts.userId, id), eq(accounts.provider, "linkedin")))).length > 0;
   return (
     <main>
@@ -45,22 +46,22 @@ export default async function Profile() {
           {linked && <span className="badge">Connected with LinkedIn</span>}</div>
       </div>
       <Nav />
-      {p?.linkedinUrl && <a href={p.linkedinUrl} target="_blank" rel="noopener noreferrer">View LinkedIn profile</a>}
-      {process.env.UNLOCK_INVITES !== "0" && <p className="why">Invite 3 friends to unlock unlimited coffee requests. <a href="/invite">Get your link</a></p>}
+      {!setup && p?.linkedinUrl && <a href={p.linkedinUrl} target="_blank" rel="noopener noreferrer">View LinkedIn profile</a>}
+      {!setup && process.env.UNLOCK_INVITES !== "0" && <p className="why">Invite 3 friends to unlock unlimited coffee requests. <a href="/invite">Get your link</a></p>}
       {p?.foundingNo && <div className="card"><div className="who"><img className="badgeimg" src="/badges/founding-50.svg" alt="" width="72" height="72" /><div><h2>KAVE FOUNDING 50</h2><p style={{ margin: 0 }}>Member #{p.foundingNo}. Yours for good.</p></div></div></div>}
-      {miss.length > 0 && <div className="card"><b>Your profile is {done}% complete</b><div className="bar"><div style={{ width: done + "%" }} /></div><h2>You're almost on Kave!</h2><p>Complete your profile to start meeting interesting professionals{stats.foundingLeft > 0 ? ` and secure your chance to become one of the first 50 Kave members (${stats.foundingLeft} spots left)` : ""}.</p></div>}
+      {setup && <div className="why"><b>Create your profile. It takes about two minutes.</b>{stats.foundingLeft > 0 ? ` Finish it to claim one of the first 50 Kave spots (${stats.foundingLeft} left).` : ""}</div>}
       {!miss.length && <p className="why">✓ Your account is set up and your profile is live.</p>}
-      {(win[id] || []).length > 0 && <div className="card"><h2>Monthly winner</h2><p><Flair cats={win[id]} /></p><p style={{ margin: 0 }}>You won last month, so you have special flair and priority in search all month.</p></div>}
-      {!/\S+\s+\S+/.test(u?.name || "") && <p className="why">Add your first and last name below so people see who you are.</p>}
-      {process.env.VAPID_PUBLIC_KEY && <PushButton vapid={process.env.VAPID_PUBLIC_KEY} />}
-      <Milestone stats={stats} />
-      <div className="card"><small>Your next step</small><h2>{step[0]}</h2><p>{step[1]}</p>{step[2] && <a className="chip" href={step[2]}>Let's go</a>}</div>
+      {!setup && (win[id] || []).length > 0 && <div className="card"><h2>Monthly winner</h2><p><Flair cats={win[id]} /></p><p style={{ margin: 0 }}>You won last month, so you have special flair and priority in search all month.</p></div>}
+      {!setup && !/\S+\s+\S+/.test(u?.name || "") && <p className="why">Add your first and last name below so people see who you are.</p>}
+      {!setup && process.env.VAPID_PUBLIC_KEY && <PushButton vapid={process.env.VAPID_PUBLIC_KEY} />}
+      {!setup && <Milestone stats={stats} />}
+      {!miss.length && <div className="card"><small>Your next step</small><h2>{step[0]}</h2><p>{step[1]}</p>{step[2] && <a className="chip" href={step[2]}>Let's go</a>}</div>}
       {!miss.length && p?.refCode && <ShareCard code={p.refCode} />}
       <ProfileForm image={u?.image || ""} initial={{ ...(p || {}), updatedAt: undefined, userId: undefined, name: u?.name || "" }} />
       <div className="row">
-        {linked && <form action={disconnectLinkedIn}><button>Disconnect LinkedIn</button></form>}
-        <form action={async () => { "use server"; await signOut({ redirectTo: "/" }); }}><button>Sign out</button></form>
-        <form action={deleteAccount}><button>Delete my account</button></form>
+        {linked && <form action={disconnectLinkedIn}><SubmitButton>Disconnect LinkedIn</SubmitButton></form>}
+        <form action={async () => { "use server"; await signOut({ redirectTo: "/" }); }}><SubmitButton>Sign out</SubmitButton></form>
+        <form action={deleteAccount}><SubmitButton>Delete my account</SubmitButton></form>
       </div>
     </main>
   );

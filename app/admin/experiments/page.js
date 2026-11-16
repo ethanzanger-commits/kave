@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/admin";
+import SubmitButton from "@/app/SubmitButton";
 import { client } from "@/db";
 import AdminNav from "../AdminNav";
 import { experimentStats } from "@/lib/growth";
@@ -24,7 +25,7 @@ export default async function Experiments() {
         <label>Starts<input name="startsOn" type="date" /></label>
         <label>Ends<input name="endsOn" type="date" /></label>
         <label>How will you judge it?<input name="metric" maxLength={120} placeholder="Completed profiles from this channel" /></label>
-        <p></p><button className="primary">Save test</button>
+        <p></p><SubmitButton className="primary">Save test</SubmitButton>
       </form>
       {list.map((e) => (
         <form key={e.id} action={updateExperiment} className="card">
@@ -37,7 +38,7 @@ export default async function Experiments() {
           <label>Status<select name="status" defaultValue={e.status}><option>planned</option><option>running</option><option>done</option></select></label>
           <label>Result<textarea name="result" rows={2} defaultValue={e.result || ""} /></label>
           <label>What we learned<textarea name="learnings" rows={2} defaultValue={e.learnings || ""} /></label>
-          <p></p><button>Update</button>
+          <p></p><SubmitButton>Update</SubmitButton>
         </form>))}
     </main>
   );

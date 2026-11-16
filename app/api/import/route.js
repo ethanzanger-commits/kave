@@ -3,16 +3,19 @@ import Papa from "papaparse";
 import { auth } from "@/auth";
 import { parseCv } from "@/lib/cv";
 import { track } from "@/lib/track";
+import { client } from "@/db";
+import { extractSkills, mergeSkills } from "@/lib/skills";
 export const runtime = "nodejs";
 async function aiParse(text) {
   const k = process.env.ANTHROPIC_API_KEY; if (!k) return null;
   try {
     const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": k, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: "claude-haiku-5-5", max_tokens: 2000, messages: [{ role: "user", content: 'Reply with JSON only. Keys: name, about (a friendly, professional first-person bio of 2-3 sentences with a touch of humor), headline, industry, company, skills (strings), experience [{title,company,start,end}], education [{school,degree,start,end}]. end is "" if current. CV:\n' + text.slice(0, 15000) }] }) });
+      body: JSON.stringify({ model: "claude-haiku-5-5", max_tokens: 2000, messages: [{ role: "user", content: 'Reply with JSON only. Keys: name, about (a friendly, professional first-person bio of 2-3 sentences with a touch of humor), headline, industry, company, skills (up to 15 short names of 1-3 words each, such as Partnerships, Paid Media, SQL; include platforms and tools), experience [{title,company,start,end}], education [{school,degree,start,end}]. end is "" if current. CV:\n' + text.slice(0, 15000) }] }) });
     return JSON.parse((await r.json()).content[0].text.replace(/```json|```/g, ""));
   } catch { return null; }
 }
-const cv = async (t) => (await aiParse(t)) || parseCv(t);
+const finish = (r, text) => ({ ...r, skills: mergeSkills(r.skills, extractSkills(text)).slice(0, 20) });
+const cv = async (t) => finish((await aiParse(t)) || parseCv(t), t);
 async function rows(zip, name) {
   const f = zip.file(new RegExp(`(^|/)${name}\\.csv$`, "i"))[0];
   return f ? Papa.parse(await f.async("string"), { header: true, skipEmptyLines: true }).data : [];
@@ -20,15 +23,17 @@ async function rows(zip, name) {
 async function fromLinkedInZip(buf) {
   const zip = await JSZip.loadAsync(buf);
   const [pos, edu, sk, pr] = await Promise.all(["Positions", "Education", "Skills", "Profile"].map((n) => rows(zip, n)));
+  const prose = [pr[0]?.["Summary"], pr[0]?.["Headline"], ...pos.map((r) => `${r["Title"] || ""} ${r["Description"] || ""}`)].join("\n");
   const experience = pos.map((r) => ({ company: r["Company Name"], title: r["Title"], start: r["Started On"], end: r["Finished On"] }));
   const current = experience.find((e) => !e.end) || experience[0];
   return { name: [pr[0]?.["First Name"], pr[0]?.["Last Name"]].filter(Boolean).join(" "), about: (pr[0]?.["Summary"] || "").slice(0, 500), headline: pr[0]?.["Headline"] || "", industry: pr[0]?.["Industry"] || "", company: current?.company || "",
-    experience, skills: sk.map((r) => r["Name"]).filter(Boolean),
+    experience, skills: mergeSkills(sk.map((r) => r["Name"]), extractSkills(prose)).slice(0, 20),
     education: edu.map((r) => ({ school: r["School Name"], degree: r["Degree Name"], start: r["Start Date"], end: r["End Date"] })) };
 }
 // Parses in memory and returns JSON. Nothing is stored until the user reviews and saves.
 export async function POST(req) {
   const s = await auth(); if (!s) return Response.json({ error: "Sign in first" }, { status: 401 });
+  try { const [{ c }] = await client`select count(*)::int as c from event where "userId" = ${s.user.id} and name = 'cv_uploaded' and at > now() - interval '1 day'`; if (c >= 15) return Response.json({ error: "Too many uploads today. Try again tomorrow." }, { status: 429 }); } catch {}
   await track(s.user.id, "cv_uploaded");
   const file = (await req.formData()).get("file");
   if (!file || file.size > 25e6) return Response.json({ error: "Bad file" }, { status: 400 });

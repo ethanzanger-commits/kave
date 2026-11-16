@@ -11,7 +11,7 @@ export default async function Share({ params }) {
       <p className="logo">kave<span>.</span></p>
       <h1>Let's grab coffee on kave</h1>
       <p className="lead">{r.first}{r.headline ? `, ${r.headline},` : ""} is on kave, a private beta that introduces you to people worth meeting in Israeli tech, one coffee at a time.</p>
-      <a className="cta" href={"/join?ref=" + code}>Join {r.first} on kave</a>
+      <a className="cta" href={"/join?ref=" + code + "&src=share-card"}>Join {r.first} on kave</a>
       <p><a href="/how-to">How it works</a></p>
     </main>
   );
