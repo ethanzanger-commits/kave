@@ -1,7 +1,0 @@
-.env.local
-node_modules
-.next
-.neon
-
-playwright-report
-test-results
