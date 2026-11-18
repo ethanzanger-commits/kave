@@ -10,6 +10,8 @@ import { recordIntent } from "@/lib/attribution";
 import { homeFaces } from "@/lib/social";
 import { short } from "@/lib/leaders";
 import { verifyTurnstile } from "@/lib/turnstile";
+import { cleanEmail } from "@/lib/email";
+import { landing } from "@/lib/landing";
 import { hit } from "@/lib/limit";
 import { safeNext } from "@/lib/next";
 import Turnstile from "./Turnstile";
@@ -31,12 +33,12 @@ export default async function Home({ searchParams }) {
       {next && <p className="why" role="status">Sign in to continue to the page you opened.</p>}
       {process.env.AUTH_LINKEDIN_ID && <form action={go("linkedin", next)}><SubmitButton className="primary">Continue with LinkedIn</SubmitButton></form>}
       {process.env.AUTH_GOOGLE_ID && <form action={go("google", next)}><SubmitButton>Continue with Google</SubmitButton></form>}
-      <form action={async (fd) => { "use server"; const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() || "?"; if (!(await hit("signin:ip:" + ip, 10, 3600)) || !(await hit("signin:email:" + String(fd.get("email") || "").toLowerCase(), 4, 3600))) redirect("/?verify=slow"); if (!(await verifyTurnstile(fd, ip))) redirect("/?verify=failed"); await recordIntent(fd.get("email")); (await cookies()).set("kave_email", String(fd.get("email") || "").trim().toLowerCase(), { httpOnly: true, sameSite: "lax", maxAge: 1800, path: "/" }); const nx = safeNext(fd.get("next")) || "/profile"; (await cookies()).set("kave_next", nx, { httpOnly: true, sameSite: "lax", maxAge: 1800, path: "/" }); await signIn("nodemailer", { email: fd.get("email"), redirectTo: nx }); }}>
+      <form action={async (fd) => { "use server"; const em = cleanEmail(fd.get("email")); if (!em) redirect("/?verify=email"); const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() || "?"; if (!(await hit("signin:ip:" + ip, 10, 3600)) || !(await hit("signin:email:" + String(fd.get("email") || "").toLowerCase(), 4, 3600))) redirect("/?verify=slow"); if (!(await verifyTurnstile(fd, ip))) redirect("/?verify=failed"); await recordIntent(em); (await cookies()).set("kave_email", em, { httpOnly: true, sameSite: "lax", maxAge: 1800, path: "/" }); const nx = safeNext(fd.get("next")) || (await landing(em)); (await cookies()).set("kave_next", nx, { httpOnly: true, sameSite: "lax", maxAge: 1800, path: "/" }); await signIn("nodemailer", { email: em, redirectTo: nx }); }}>
         <label htmlFor="email">Your email</label>
         <input id="email" name="email" type="email" placeholder="you@company.com" required />
         <Turnstile />
         <input type="hidden" name="next" value={next || ""} />
-        {sp.verify && <p className="why" role="alert">{sp.verify === "slow" ? "Too many sign-in attempts. Please try again in an hour." : "We couldn't confirm you're human. Please try again."}</p>}
+        {sp.verify && <p className="why" role="alert">{sp.verify === "slow" ? "Too many sign-in attempts. Please try again in an hour." : sp.verify === "email" ? "That email address doesn't look right. Please check it and try again." : "We couldn't confirm you're human. Please try again."}</p>}
         <p></p><SubmitButton className="primary">Email me a sign-in link</SubmitButton>
       </form>
       {faces.length >= 3 && <section><h2>Some of the people on Kave</h2><ul className="faces">{faces.map((f) => <li key={f.id}><img src={"/api/photo/" + f.id} alt="" width="120" height="150" loading="lazy" /><b>{short(f.name, f.email)}</b><small>{f.headline}</small></li>)}</ul></section>}

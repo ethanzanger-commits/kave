@@ -29,3 +29,7 @@ DATABASE_URL, AUTH_SECRET, GMAIL_USER, GMAIL_APP_PASSWORD, ADMIN_EMAIL, CRON_SEC
 
 ## Security
 Admin pages gate on `ADMIN_EMAIL`. Public share pages expose first name + headline + founding number only. 18+ required. Free plans only; no Supabase.
+
+- Admin Intelligence: /admin/intelligence (lib/intel.js queries, lib/csv.js, lib/matchlog.js writes coffee history into `event` via migrations/kave17-admin-intel.sql). Completed coffee = match.met only, never inferred from confirmed. Unknown history is null/"Unavailable", never 0. Tests: node tests/intel.test.mjs.
+- Hardening (Nov 2026): next-auth 5.0.0-beta.32 + nodemailer 10.1.4 (override in package.json; do not remove). lib/email.js strict address check on every sign-in path; lib/guard.js blockedBetween used by swipe and /member/[id]; swipe/schedule/message/intro are rate-limited; deleteAccount wipes all personal tables; migrations kave17 and kave18; nudges cron /api/cron/nudges (lib/nudges.js, once-only via event.key). Tests: node tests/fixes.test.mjs.
+- migrations/ALL-IN-ONE.sql = kave2..kave18 in one idempotent paste (tested 3x on a fresh DB). Email sign-in lands finished members on /discover (lib/landing.js).

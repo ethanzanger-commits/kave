@@ -13,13 +13,14 @@ import { why } from "@/lib/match";
 import { overlap, AVAIL } from "@/lib/avail";
 import { cityOf } from "@/lib/place";
 import { endorsementsFor } from "@/lib/social";
+import { blockedBetween } from "@/lib/guard";
 export async function generateMetadata() { return { title: "Member · Kave", robots: { index: false } }; }
 export default async function Member({ params }) {
   const { id } = await params;
   const s = await auth(); if (!s?.user?.id) redirect("/?next=" + encodeURIComponent(`/member/${id}`)); const me = s.user.id;
   const [p] = await db.select().from(profiles).where(eq(profiles.userId, id));
   const [u] = await db.select().from(users).where(eq(users.id, id));
-  if (!p || !p.ageOk || !u) notFound();
+  if (!p || !p.ageOk || !u || (id !== me && (await blockedBetween(me, id)))) notFound();
   const [mine] = await db.select().from(profiles).where(eq(profiles.userId, me));
   const mineSw = (await db.select().from(swipes).where(and(eq(swipes.from, me), eq(swipes.to, id))))[0];
   const theirSw = (await db.select().from(swipes).where(and(eq(swipes.from, id), eq(swipes.to, me))))[0];

@@ -15,7 +15,7 @@ import LinkedInButton from "../LinkedInButton";
 import ThankShare from "../ThankShare";
 import AutoRefresh from "../messages/AutoRefresh";
 import { cafePins } from "@/lib/cafes";
-import { fmt, gcal } from "@/lib/fmt";
+import { fmt, gcal, isPast } from "@/lib/fmt";
 export default async function Matches() {
   const s = await auth(); if (!s?.user?.id) redirect("/?next=" + encodeURIComponent("/matches")); const me = s.user.id;
   const ms = await db.select().from(matches).where(or(eq(matches.a, me), eq(matches.b, me)));
@@ -78,8 +78,8 @@ export default async function Matches() {
                 {gcal(m) && <>{" · "}<a href={gcal(m)}>Add to calendar</a></>}</p>
               {m.place && <><iframe title={"Map of " + m.place} src={"https://www.google.com/maps?q=" + encodeURIComponent(m.place + " " + (mine?.neighborhood || "")) + "&output=embed"} width="100%" height="200" loading="lazy" style={{ border: 0, borderRadius: 16 }} referrerPolicy="no-referrer-when-downgrade" />
                 <p><a href={"https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(m.place + " " + (mine?.neighborhood || ""))} target="_blank" rel="noopener noreferrer">Get directions</a></p></>}
-              {new Date(m.when) > new Date() && <form action={respond}><input type="hidden" name="id" value={m.id} /><SubmitButton name="a" value="cancel">Cancel this coffee</SubmitButton></form>}
-              {m.met == null && new Date(m.when) < new Date() && <form action={checkIn}><input type="hidden" name="id" value={m.id} /><p>Did it happen?</p>
+              {!isPast(m.when) && <form action={respond}><input type="hidden" name="id" value={m.id} /><SubmitButton name="a" value="cancel">Cancel this coffee</SubmitButton></form>}
+              {m.met == null && isPast(m.when) && <form action={checkIn}><input type="hidden" name="id" value={m.id} /><p>Did it happen?</p>
                 <SubmitButton name="met" value="yes">Yes, we met</SubmitButton><SubmitButton name="met" value="no">It didn't happen</SubmitButton></form>}
               {m.met === true && <>
                 {th.filter((x) => x.fromId !== me).map((x) => <div key={x.fromId}><p className="why">{x.text}</p>{x.isPublic && !x.hidden && <form action={hideThanks}><input type="hidden" name="id" value={m.id} /><SubmitButton>Hide from my profile</SubmitButton></form>}</div>)}

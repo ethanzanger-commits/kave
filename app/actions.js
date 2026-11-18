@@ -1,11 +1,15 @@
 "use server";
 import { auth, signOut } from "@/auth";
 import { cleanLinkedIn } from "@/lib/linkedin";
-import { notifyReferrer } from "@/lib/notify";
+import { notifyReferrer, notify as addNotice } from "@/lib/notify";
+import { redirect } from "next/navigation";
+import { hit } from "@/lib/limit";
+import { blockedBetween } from "@/lib/guard";
 import { db, client } from "@/db";
 import { awardFounding } from "@/lib/founding";
 import { AV_KEYS } from "@/lib/avail";
 import { CITIES } from "@/lib/cities";
+import { logCoffee } from "@/lib/matchlog";
 import { profiles, accounts, users, swipes, matches, blocks, thanks, events, messages, intros } from "@/schema";
 import { cookies } from "next/headers";
 import { fmt } from "@/lib/fmt";
@@ -20,18 +24,22 @@ import { and, eq, or, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 const li = cleanLinkedIn;
 const t = (v, n = 200) => (v ? String(v).slice(0, n) : null);
+// Input hygiene for list fields that arrive from the browser: right type, bounded size.
+const strs = (a, max, len) => (Array.isArray(a) ? a : []).map((x) => String(x ?? "").trim().slice(0, len)).filter(Boolean).slice(0, max);
+const objs = (a, max) => (Array.isArray(a) ? a : []).slice(0, max).filter((x) => x && typeof x === "object" && !Array.isArray(x)).map((x) => Object.fromEntries(Object.entries(x).slice(0, 12).map(([k, v]) => [String(k).slice(0, 40), typeof v === "number" || typeof v === "boolean" ? v : v == null ? null : String(v).slice(0, 400)])));
 export async function saveProfile(d) {
   const s = await auth(); if (!s) throw new Error("Sign in first");
+  d = d && typeof d === "object" ? d : {};
   if (!d.ageOk) throw new Error("Confirm you are 18 or older");
   const [pu] = await db.select().from(users).where(eq(users.id, s.user.id));
   if (!pu?.image) throw new Error("Add a profile photo");
   if (!/\S+\s+\S+/.test(d.name || "")) throw new Error("Add your first and last name");
   await db.update(users).set({ name: t(d.name, 80) }).where(eq(users.id, s.user.id));
-  if (!t(d.about) || !t(d.headline) || !CITIES.includes(d.city) || !(d.skills || []).length) throw new Error("Complete your profile");
+  if (!t(d.about) || !t(d.headline) || !CITIES.includes(d.city) || !strs(d.skills, 50, 60).length) throw new Error("Complete your profile");
   await track(s.user.id, "profile_saved");
-  const v = { ageOk: true, about: t(d.about, 600), lookingFor: t(d.lookingFor, 160), workingOn: t(d.workingOn, 200), showOnHome: !!d.showOnHome, canHelp: t(d.canHelp, 160), weekly: d.weekly !== false, availability: (d.availability || []).filter((x) => AV_KEYS.includes(x)), city: CITIES.includes(d.city) ? d.city : null, headline: t(d.headline), company: t(d.company), industry: t(d.industry), neighborhood: CITIES.includes(d.city) ? d.city : null,
-    linkedinUrl: li(d.linkedinUrl), skills: (d.skills || []).slice(0, 50), experience: (d.experience || []).slice(0, 30),
-    education: (d.education || []).slice(0, 10), updatedAt: new Date() };
+  const v = { ageOk: true, about: t(d.about, 600), lookingFor: t(d.lookingFor, 160), workingOn: t(d.workingOn, 200), showOnHome: !!d.showOnHome, canHelp: t(d.canHelp, 160), weekly: d.weekly !== false, availability: strs(d.availability, 20, 30).filter((x) => AV_KEYS.includes(x)), city: CITIES.includes(d.city) ? d.city : null, headline: t(d.headline), company: t(d.company), industry: t(d.industry), neighborhood: CITIES.includes(d.city) ? d.city : null,
+    linkedinUrl: li(d.linkedinUrl), skills: strs(d.skills, 50, 60), experience: objs(d.experience, 30),
+    education: objs(d.education, 10), updatedAt: new Date() };
   const ref = (await cookies()).get("ref")?.value; let invitedBy = null;
   if (ref) { const [o] = await db.select({ u: profiles.userId }).from(profiles).where(eq(profiles.refCode, ref)); if (o && o.u !== s.user.id) invitedBy = o.u; }
   const [sa] = await client`select "referrerId" from signup_attr where "userId" = ${s.user.id}`.catch(() => []);
@@ -75,19 +83,35 @@ export async function disconnectLinkedIn() {
 
 export async function swipe(to, yes) {
   const s = await auth(); if (!s) throw new Error("Sign in first"); const me = s.user.id;
-  if (yes) { const [pre] = await db.select().from(swipes).where(and(eq(swipes.from, to), eq(swipes.to, me), eq(swipes.yes, true))); if (!pre && (await gate(me, s.user.email)).locked) throw new Error("Invite friends to unlock more coffees"); }
+  to = String(to || ""); yes = !!yes;
+  if (!to || to === me) return; // never ask yourself
+  if (!(await hit("swipe:" + me, 60, 3600))) throw new Error("You're going a bit fast. Please try again in a little while.");
+  const [mine] = await db.select().from(profiles).where(eq(profiles.userId, me));
+  if (!mine?.ageOk) redirect("/profile");
+  if (!to.startsWith("demo-")) { // the other person must exist, be finished, and not be blocked either way
+    const [tp] = await db.select().from(profiles).where(eq(profiles.userId, to));
+    if (!tp?.ageOk || (await blockedBetween(me, to))) return;
+  }
+  if (yes) { const [pre] = await db.select().from(swipes).where(and(eq(swipes.from, to), eq(swipes.to, me), eq(swipes.yes, true))); if (!pre && (await gate(me, s.user.email)).locked) redirect("/discover?locked=1"); }
+  const [prev] = await db.select().from(swipes).where(and(eq(swipes.from, me), eq(swipes.to, to)));
   if (yes) await track(me, "coffee_yes");
   await db.insert(swipes).values({ from: me, to, yes }).onConflictDoUpdate({ target: [swipes.from, swipes.to], set: { yes } });
   if (yes) {
     const [back] = await db.select().from(swipes).where(and(eq(swipes.from, to), eq(swipes.to, me), eq(swipes.yes, true)));
     const ex = await db.select().from(matches).where(or(and(eq(matches.a, me), eq(matches.b, to)), and(eq(matches.a, to), eq(matches.b, me))));
-    if (!back && !to.startsWith("demo-")) { const [ru] = await db.select().from(users).where(eq(users.id, to)); await sendTemplate(ru?.email, "coffeeRequest", { from: short(s.user.name, s.user.email), base: base(), link: `${base()}/member/${me}` }); await notify(to, short(s.user.name, s.user.email) + " would like to grab coffee", "Open Kave to accept or decline.", "/matches"); }
+    if (!back && !to.startsWith("demo-") && !prev?.yes) { // tell them once, not every time the button is pressed
+      const who = short(s.user.name, s.user.email), [ru] = await db.select().from(users).where(eq(users.id, to));
+      await addNotice(to, who + " would like to grab coffee", "/matches");
+      await sendTemplate(ru?.email, "coffeeRequest", { from: who, base: base(), link: `${base()}/member/${me}` }); await notify(to, who + " would like to grab coffee", "Open Kave to accept or decline.", "/matches");
+    }
     if ((back || to.startsWith("demo-")) && !ex.length) {
-      const [nm] = await db.insert(matches).values({ a: me, b: to }).returning();
-      await track(me, "matched"); await track(to, "matched");
-      if (back) {
-        const us = await db.select().from(users).where(inArray(users.id, [me, to]));
-        for (const u of us) { await notify(u.id, "It's a match", "Pick a time and place for your coffee.", "/matches"); await sendTemplate(u.email, "match", { other: short(us.find((x) => x.id !== u.id)?.name, us.find((x) => x.id !== u.id)?.email), base: base(), link: nm ? `${base()}/coffee/${nm.id}` : undefined }); }
+      const [nm] = await db.insert(matches).values({ a: me, b: to }).onConflictDoNothing().returning(); // a simultaneous double match is dropped
+      if (nm) {
+        await track(me, "matched"); await track(to, "matched");
+        if (back) {
+          const us = await db.select().from(users).where(inArray(users.id, [me, to]));
+          for (const u of us) { await notify(u.id, "It's a match", "Pick a time and place for your coffee.", "/matches"); await sendTemplate(u.email, "match", { other: short(us.find((x) => x.id !== u.id)?.name, us.find((x) => x.id !== u.id)?.email), base: base(), link: `${base()}/coffee/${nm.id}` }); }
+        }
       }
     }
   }
@@ -95,9 +119,11 @@ export async function swipe(to, yes) {
 }
 export async function schedule(fd) {
   const s = await auth(); if (!s) throw new Error("Sign in first"); const id = fd.get("id");
+  if (!(await hit("sched:" + s.user.id, 30, 3600)) || !(await hit("sched:m:" + id, 8, 86400))) return;
   const [m] = await db.select().from(matches).where(eq(matches.id, id));
   if (!m || (m.a !== s.user.id && m.b !== s.user.id)) throw new Error("Not your match");
   await db.update(matches).set({ when: t(fd.get("when"), 80), place: t(fd.get("place"), 80), status: "proposed", proposedBy: s.user.id, reminded: false }).where(eq(matches.id, id));
+  await logCoffee(s.user.id, id, m.when ? "coffee_rescheduled" : "coffee_proposed", { when: t(fd.get("when"), 80), place: t(fd.get("place"), 80), prevStatus: m.status || null });
   const [ou] = await db.select().from(users).where(eq(users.id, m.a === s.user.id ? m.b : m.a));
   await sendTemplate(ou?.email, "coffeeProposed", { from: short(s.user.name, s.user.email), when: fmt(fd.get("when")), place: fd.get("place"), base: base(), link: `${base()}/coffee/${id}` }); await notify(ou?.id, short(s.user.name, s.user.email) + " suggested a coffee", "Accept or change the plan.", "/matches");
   revalidatePath("/matches");
@@ -115,20 +141,34 @@ export async function loadDemo() {
 }
 
 export async function deleteAccount() {
-  const s = await auth(); if (!s) return; const id = s.user.id;
+  const s = await auth(); if (!s) return; const id = s.user.id, email = s.user.email;
+  const mine = (await db.select().from(matches).where(or(eq(matches.a, id), eq(matches.b, id)))).map((m) => m.id);
+  if (mine.length) { await db.delete(thanks).where(inArray(thanks.matchId, mine)); await db.delete(messages).where(inArray(messages.matchId, mine)); }
+  await db.delete(thanks).where(eq(thanks.fromId, id));
+  await db.delete(intros).where(or(eq(intros.byId, id), eq(intros.a, id), eq(intros.b, id)));
   await db.delete(swipes).where(or(eq(swipes.from, id), eq(swipes.to, id)));
   await db.delete(matches).where(or(eq(matches.a, id), eq(matches.b, id)));
   await db.delete(blocks).where(or(eq(blocks.from, id), eq(blocks.to, id)));
   await db.delete(events).where(eq(events.userId, id));
   await db.delete(messages).where(eq(messages.fromId, id));
+  // Tables added by later migrations: best effort, a missing table must not block deletion. (optout is kept on purpose so we never email them again.)
+  for (const run of [
+    () => client`delete from dm_thread where a = ${id} or b = ${id}`, () => client`delete from saved where "userId" = ${id} or "targetId" = ${id}`,
+    () => client`delete from circle_member where "userId" = ${id}`, () => client`delete from push_sub where "userId" = ${id}`, () => client`delete from notice where "userId" = ${id}`,
+    () => client`delete from reminder where "userId" = ${id}`, () => client`delete from signup_attr where "userId" = ${id}`, () => client`delete from profile_draft where "userId" = ${id}`,
+    () => client`delete from story where "userId" = ${id}`, () => client`delete from monthly_winner where "userId" = ${id}`, () => client`delete from broadcast_sent where "userId" = ${id}`,
+    () => client`delete from intent where email = ${String(email || "").toLowerCase()}`,
+  ]) { try { await run(); } catch {} }
   await db.delete(users).where(eq(users.id, id));
   await signOut({ redirectTo: "/" });
 }
-
 export async function blockUser(to, reason) {
   const s = await auth(); if (!s) return; const me = s.user.id, r = reason === "report" ? "report" : "block";
+  to = String(to || ""); if (!to || to === me) return;
   await db.insert(blocks).values({ from: me, to, reason: r }).onConflictDoUpdate({ target: [blocks.from, blocks.to], set: { reason: r } });
+  for (const g of await db.select().from(matches).where(or(and(eq(matches.a, me), eq(matches.b, to)), and(eq(matches.a, to), eq(matches.b, me))))) await logCoffee(me, g.id, "match_removed", { reason: r, status: g.status || null, met: g.met ?? null, createdAt: g.at });
   await db.delete(matches).where(or(and(eq(matches.a, me), eq(matches.b, to)), and(eq(matches.a, to), eq(matches.b, me))));
+  await db.delete(swipes).where(or(and(eq(swipes.from, me), eq(swipes.to, to)), and(eq(swipes.from, to), eq(swipes.to, me)))); // old yes votes must not re-create the match
   revalidatePath("/discover"); revalidatePath("/matches");
 }
 export async function checkIn(fd) {
@@ -136,6 +176,8 @@ export async function checkIn(fd) {
   const [m] = await db.select().from(matches).where(eq(matches.id, id));
   if (!m || (m.a !== s.user.id && m.b !== s.user.id)) return;
   if (fd.get("met") === "yes") await track(s.user.id, "met");
+  if (fd.get("met") === "yes" && m.met !== true) await logCoffee(s.user.id, id, "coffee_completed", {}, "completed:" + id);
+  if (fd.get("met") !== "yes" && m.met !== false) await logCoffee(s.user.id, id, "coffee_not_completed", {});
   await db.update(matches).set({ met: fd.get("met") === "yes" }).where(eq(matches.id, id));
   revalidatePath("/matches");
 }
@@ -166,8 +208,8 @@ export async function respond(fd) {
   const [m] = await db.select().from(matches).where(eq(matches.id, id));
   if (!m || (m.a !== s.user.id && m.b !== s.user.id)) return;
   const other = m.a === s.user.id ? m.b : m.a;
-  if (act === "accept" && m.proposedBy !== s.user.id && m.when) { await db.update(matches).set({ status: "confirmed" }).where(eq(matches.id, id)); await track(s.user.id, "booked"); await track(other, "booked"); }
-  else if (act === "cancel") await db.update(matches).set({ status: null, when: null, place: null, proposedBy: null }).where(eq(matches.id, id));
+  if (act === "accept" && m.proposedBy !== s.user.id && m.when) { await db.update(matches).set({ status: "confirmed" }).where(eq(matches.id, id)); if (m.status !== "confirmed") await logCoffee(s.user.id, id, "coffee_confirmed", { when: m.when, place: m.place, proposedBy: m.proposedBy }); await track(s.user.id, "booked"); await track(other, "booked"); }
+  else if (act === "cancel") { if (m.status || m.when) await logCoffee(s.user.id, id, "coffee_cancelled", { prevStatus: m.status || null, when: m.when, place: m.place, proposedBy: m.proposedBy }); await db.update(matches).set({ status: null, when: null, place: null, proposedBy: null }).where(eq(matches.id, id)); }
   else return;
   const [ou] = await db.select().from(users).where(eq(users.id, other));
   await sendTemplate(ou?.email, act === "accept" ? "coffeeConfirmed" : "coffeeCancelled", { from: short(s.user.name, s.user.email), base: base(), link: `${base()}/coffee/${id}` }); await notify(ou?.id, act === "accept" ? "Coffee confirmed" : "Coffee cancelled", short(s.user.name, s.user.email), "/matches");
@@ -175,6 +217,7 @@ export async function respond(fd) {
 }
 export async function sendMessage(fd) {
   const s = await auth(); if (!s) return; const id = fd.get("id"), text = t(fd.get("text"), 500); if (!text) return;
+  if (!(await hit("msg:" + s.user.id, 60, 3600))) return;
   const [m] = await db.select().from(matches).where(eq(matches.id, id));
   if (!m || (m.a !== s.user.id && m.b !== s.user.id)) return;
   const prev = (await db.select().from(messages).where(eq(messages.matchId, id))).sort((x, y) => y.at - x.at)[0];
@@ -196,6 +239,7 @@ export async function toggleFree() {
 export async function makeIntro(fd) {
   const s = await auth(); if (!s) return; const me = s.user.id, x = fd.get("a"), y = fd.get("b");
   if (!x || !y || x === y) return;
+  if (!(await hit("intro:" + me, 10, 86400))) return;
   const mine = await db.select().from(matches).where(or(eq(matches.a, me), eq(matches.b, me)));
   const ok = (u) => mine.some((m) => m.met === true && (m.a === u || m.b === u));
   if (!ok(x) || !ok(y)) return;

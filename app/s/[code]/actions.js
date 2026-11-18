@@ -1,4 +1,5 @@
 "use server";
+import { cleanEmail } from "@/lib/email";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { signIn } from "@/auth";
@@ -12,7 +13,7 @@ const opts = (maxAge) => ({ httpOnly: true, sameSite: "lax", maxAge, path: "/" }
 export async function landingEmail(code, fd) {
   const email = String(fd.get("email") || "").trim().toLowerCase();
   const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() || "?";
-  if (!/^[^@\s]+@[^@\s]+$/.test(email)) redirect(`/s/${code}`);
+  if (!cleanEmail(email)) redirect(`/s/${code}`);
   if (!(await hit("signin:ip:" + ip, 10, 3600)) || !(await hit("signin:email:" + email, 4, 3600))) redirect(`/s/${code}?verify=slow`);
   if (!(await verifyTurnstile(fd, ip))) redirect(`/s/${code}?verify=failed`);
   const c = await cookies();
