@@ -16,7 +16,7 @@ import { redirect } from "next/navigation";
 import ProfileForm from "../ProfileForm";
 import { disconnectLinkedIn, deleteAccount } from "../actions";
 export default async function Profile() {
-  const s = await auth(); if (!s?.user?.id) redirect("/");
+  const s = await auth(); if (!s?.user?.id) redirect("/?next=" + encodeURIComponent("/profile"));
   const id = s.user.id;
   const [p] = await db.select().from(profiles).where(eq(profiles.userId, id));
   const [u] = await db.select().from(users).where(eq(users.id, id));

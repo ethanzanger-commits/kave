@@ -6,7 +6,7 @@ import { savedList } from "@/lib/social";
 import { short } from "@/lib/leaders";
 export const metadata = { title: "Saved · Kave" };
 export default async function Saved() {
-  const s = await auth(); if (!s?.user?.id) redirect("/");
+  const s = await auth(); if (!s?.user?.id) redirect("/?next=" + encodeURIComponent("/saved"));
   const list = await savedList(client, s.user.id);
   return (
     <main>

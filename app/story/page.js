@@ -9,7 +9,7 @@ export const metadata = { title: "Share your story", robots: { index: false } };
 export const dynamic = "force-dynamic";
 async function submit(fd) {
   "use server";
-  const s = await auth(); if (!s?.user?.id) redirect("/");
+  const s = await auth(); if (!s?.user?.id) redirect("/?next=" + encodeURIComponent("/story"));
   const body = String(fd.get("body") || "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").trim().slice(0, 800);
   if (body.length < 10) redirect("/story?e=short");
   if (!(await hit("story:" + s.user.id, 3, 86400))) redirect("/story?e=limit");
@@ -19,7 +19,7 @@ async function submit(fd) {
   redirect("/story?sent=1");
 }
 export default async function Story({ searchParams }) {
-  const s = await auth(); if (!s?.user?.id) redirect("/");
+  const s = await auth(); if (!s?.user?.id) redirect("/?next=" + encodeURIComponent("/story"));
   const sp = (await searchParams) || {};
   return (
     <main>

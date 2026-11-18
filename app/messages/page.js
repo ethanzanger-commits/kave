@@ -8,7 +8,7 @@ export const metadata = { title: "Messages", robots: { index: false } };
 export const dynamic = "force-dynamic";
 const ago = (d) => { const m = Math.round((Date.now() - new Date(d)) / 6e4); return m < 1 ? "now" : m < 60 ? m + "m" : m < 1440 ? Math.round(m / 60) + "h" : Math.round(m / 1440) + "d"; };
 export default async function Messages() {
-  const s = await auth(); if (!s?.user?.id) redirect("/"); const me = s.user.id;
+  const s = await auth(); if (!s?.user?.id) redirect("/?next=" + encodeURIComponent("/messages")); const me = s.user.id;
   let rows = [], err = false;
   try {
     rows = await client`select t.id, t.status, t.initiator, t."lastAt", o.id as oid, o.name, o.email, p.headline,

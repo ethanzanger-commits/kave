@@ -16,7 +16,7 @@ import { endorsementsFor } from "@/lib/social";
 export async function generateMetadata() { return { title: "Member · Kave", robots: { index: false } }; }
 export default async function Member({ params }) {
   const { id } = await params;
-  const s = await auth(); if (!s?.user?.id) redirect("/"); const me = s.user.id;
+  const s = await auth(); if (!s?.user?.id) redirect("/?next=" + encodeURIComponent(`/member/${id}`)); const me = s.user.id;
   const [p] = await db.select().from(profiles).where(eq(profiles.userId, id));
   const [u] = await db.select().from(users).where(eq(users.id, id));
   if (!p || !p.ageOk || !u) notFound();

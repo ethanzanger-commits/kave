@@ -6,7 +6,7 @@ import { board, monthKey, prevMonthKey, finalizeMonth, short, FLAIR } from "@/li
 export const metadata = { title: "Leaderboards · Kave" };
 const label = (m) => new Date(m + "-15").toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 export default async function Leaders() {
-  const s = await auth(); if (!s?.user?.id) redirect("/");
+  const s = await auth(); if (!s?.user?.id) redirect("/?next=" + encodeURIComponent("/leaderboard"));
   const m = monthKey(), pm = prevMonthKey(); let inv = [], cof = [], prev = [];
   try {
     await finalizeMonth(client, pm);

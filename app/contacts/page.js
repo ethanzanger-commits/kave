@@ -8,7 +8,7 @@ import Nav from "../Nav";
 import ContactsUpload from "./ContactsUpload";
 export const metadata = { title: "Contacts on Kave" };
 export default async function Contacts() {
-  const s = await auth(); if (!s?.user?.id) redirect("/");
+  const s = await auth(); if (!s?.user?.id) redirect("/?next=" + encodeURIComponent("/contacts"));
   const [me] = await db.select().from(profiles).where(eq(profiles.userId, s.user.id));
   if (!me?.refCode) redirect("/profile");
   const invite = `https://${(await headers()).get("host")}/join?ref=${me.refCode}`;

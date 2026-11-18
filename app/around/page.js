@@ -17,7 +17,7 @@ import { haystack, matchesQuery } from "@/lib/search";
 import { isFinished } from "@/lib/complete";
 export const metadata = { title: "People · Kave" };
 export default async function Around({ searchParams }) {
-  const s = await auth(); if (!s?.user?.id) redirect("/"); const me = s.user.id;
+  const s = await auth(); if (!s?.user?.id) redirect("/?next=" + encodeURIComponent("/around")); const me = s.user.id;
   const sp = (await searchParams) || {}; const city = sp.city || "", q = String(sp.q || "").slice(0, 80), industry = sp.industry || "", freeOnly = sp.free === "1", n = Math.min(500, Math.max(30, Number(sp.n) || 30));
   const filtering = !!(q.trim() || industry || freeOnly);
   const [mine = {}] = await db.select().from(profiles).where(eq(profiles.userId, me));

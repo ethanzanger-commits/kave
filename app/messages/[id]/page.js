@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Message", robots: { index: false } };
 export default async function Thread({ params }) {
   const { id } = await params;
-  const s = await auth(); if (!s?.user?.id) redirect("/"); const me = s.user.id;
+  const s = await auth(); if (!s?.user?.id) redirect("/?next=" + encodeURIComponent(`/messages/${id}`)); const me = s.user.id;
   const [t] = await client`select t.*, o.id as oid, o.name, o.email, p.headline from dm_thread t join "user" o on o.id = case when t.a = ${me} then t.b else t.a end left join profile p on p."userId" = o.id
     where t.id = ${id} and (t.a = ${me} or t.b = ${me}) and not exists (select 1 from block b where (b."fromId" = ${me} and b."toId" = o.id) or (b."fromId" = o.id and b."toId" = ${me}))`;
   if (!t) notFound();

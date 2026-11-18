@@ -8,7 +8,7 @@ import { fmt } from "@/lib/fmt";
 import { why, starters } from "@/lib/match";
 export default async function Coffee({ params }) {
   const { id } = await params;
-  const s = await auth(); if (!s?.user?.id) redirect("/"); const me = s.user.id;
+  const s = await auth(); if (!s?.user?.id) redirect("/?next=" + encodeURIComponent(`/coffee/${id}`)); const me = s.user.id;
   const [m] = await db.select().from(matches).where(eq(matches.id, id));
   if (!m || (m.a !== me && m.b !== me)) notFound();
   const oid = m.a === me ? m.b : m.a;

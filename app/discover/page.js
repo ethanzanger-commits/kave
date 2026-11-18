@@ -17,7 +17,7 @@ import { headers } from "next/headers";
 import { gate } from "@/lib/gate";
 import { score, why, learn } from "@/lib/match";
 export default async function Discover() {
-  const s = await auth(); if (!s?.user?.id) redirect("/"); const me = s.user.id;
+  const s = await auth(); if (!s?.user?.id) redirect("/?next=" + encodeURIComponent("/discover")); const me = s.user.id;
   const [mine] = await db.select().from(profiles).where(eq(profiles.userId, me));
   const [meU] = await db.select().from(users).where(eq(users.id, me));
   if (missing(mine, meU?.image).length) redirect("/profile");

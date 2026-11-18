@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import Nav from "../Nav";
 export const metadata = { title: "Circles · Kave" };
 export default async function Circles() {
-  const s = await auth(); if (!s?.user?.id) redirect("/");
+  const s = await auth(); if (!s?.user?.id) redirect("/?next=" + encodeURIComponent("/circles"));
   const list = await client`select c.slug, c.name, c.blurb, (select count(*) from circle_member m join profile p on p."userId" = m."userId" where m."circleSlug" = c.slug and p."ageOk")::int as n from circle c order by c.at`;
   return (
     <main>

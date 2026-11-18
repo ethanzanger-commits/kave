@@ -13,10 +13,11 @@ import BookForm from "../BookForm";
 import { starters } from "@/lib/match";
 import LinkedInButton from "../LinkedInButton";
 import ThankShare from "../ThankShare";
+import AutoRefresh from "../messages/AutoRefresh";
 import { cafePins } from "@/lib/cafes";
 import { fmt, gcal } from "@/lib/fmt";
 export default async function Matches() {
-  const s = await auth(); if (!s?.user?.id) redirect("/"); const me = s.user.id;
+  const s = await auth(); if (!s?.user?.id) redirect("/?next=" + encodeURIComponent("/matches")); const me = s.user.id;
   const ms = await db.select().from(matches).where(or(eq(matches.a, me), eq(matches.b, me)));
   const ids = ms.map((m) => (m.a === me ? m.b : m.a));
   const others = ids.length ? await db.select({ p: profiles, u: users }).from(profiles).innerJoin(users, eq(users.id, profiles.userId)).where(inArray(profiles.userId, ids)) : [];
@@ -37,7 +38,7 @@ export default async function Matches() {
   const host = (await headers()).get("host");
   return (
     <main>
-      <Nav />
+      <Nav /><AutoRefresh />
       <h1>My coffees</h1>
       <p>{ms.length} matches · {ms.filter((m) => m.when && m.status !== "proposed").length} coffees booked · {ms.filter((x) => x.met === true).length} coffees had · {invited} friends invited</p>
       {near.length > 0 && <p>Cafés near {mine.neighborhood}: {near.join(", ")}. <small>Map data © OpenStreetMap contributors</small></p>}

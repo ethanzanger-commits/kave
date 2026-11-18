@@ -12,7 +12,7 @@ import PersonalInvite from "./PersonalInvite";
 import BadgeShare from "../BadgeShare";
 import { badgeFor } from "@/lib/badge";
 export default async function Invite() {
-  const s = await auth(); if (!s?.user?.id) redirect("/");
+  const s = await auth(); if (!s?.user?.id) redirect("/?next=" + encodeURIComponent("/invite"));
   const [me] = await db.select().from(profiles).where(eq(profiles.userId, s.user.id));
   if (!me?.refCode) redirect("/profile");
   const joined = await db.select({ name: users.name, email: users.email }).from(profiles).innerJoin(users, eq(users.id, profiles.userId)).where(and(eq(profiles.invitedBy, s.user.id), eq(profiles.ageOk, true)));

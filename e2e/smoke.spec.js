@@ -59,3 +59,9 @@ test("unknown invitation and badge pages return 404", async ({ request }) => {
   expect((await request.get("/s/zzzz9999")).status()).toBe(404);
   expect((await request.get("/b/zzzz9999")).status()).toBe(404);
 });
+
+test("a signed-out visitor to a deep link is asked to sign in and keeps the destination", async ({ page }) => {
+  await page.goto("/coffee/abc123");
+  await expect(page).toHaveURL(/next=%2Fcoffee%2Fabc123/);
+  await expect(page.getByText("Sign in to continue")).toBeVisible();
+});

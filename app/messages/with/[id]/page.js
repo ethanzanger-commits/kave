@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "New message", robots: { index: false } };
 export default async function Compose({ params, searchParams }) {
   const { id } = await params, sp = (await searchParams) || {};
-  const s = await auth(); if (!s?.user?.id) redirect("/"); const me = s.user.id;
+  const s = await auth(); if (!s?.user?.id) redirect("/?next=" + encodeURIComponent(`/messages/with/${id}`)); const me = s.user.id;
   if (id === me) redirect("/around");
   const [o] = await client`select u.id, u.name, u.email, p.headline, p.company from "user" u join profile p on p."userId" = u.id where u.id = ${id} and p."ageOk"
     and not exists (select 1 from block b where (b."fromId" = ${me} and b."toId" = u.id) or (b."fromId" = u.id and b."toId" = ${me}))`;

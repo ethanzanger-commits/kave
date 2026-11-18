@@ -7,7 +7,7 @@ import { missing } from "@/lib/complete";
 import ShareCard from "../ShareCard";
 export const metadata = { title: "You're in · Kave" };
 export default async function Welcome() {
-  const s = await auth(); if (!s?.user?.id) redirect("/");
+  const s = await auth(); if (!s?.user?.id) redirect("/?next=" + encodeURIComponent("/welcome"));
   const [p] = await db.select().from(profiles).where(eq(profiles.userId, s.user.id));
   const [u] = await db.select().from(users).where(eq(users.id, s.user.id));
   if (missing(p, u?.image).length) redirect("/profile");
