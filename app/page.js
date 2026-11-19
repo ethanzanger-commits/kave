@@ -18,7 +18,7 @@ import Turnstile from "./Turnstile";
 import { headers } from "next/headers";
 export default async function Home({ searchParams }) {
   const sp = (await searchParams) || {}, next = safeNext(sp.next);
-  if ((await auth())?.user?.id) redirect("/profile");
+  if ((await auth())?.user?.id) redirect(next || "/profile"); // honour the page the email link pointed at
   const stats = await communityStats(client);
   const faces = await homeFaces(client).catch(() => []);
   const ref = (await cookies()).get("ref")?.value; let from = null;

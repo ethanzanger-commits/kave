@@ -1,0 +1,12 @@
+name: coffee-reminders
+# Optional: runs the coffee reminders and the "did it happen?" nudges hourly. They are idempotent (one email per person per reminder),
+# so this is safe alongside the daily Vercel cron. Needs the same CRON_SECRET and APP_URL repository secrets as profile-reminders.
+on:
+  schedule: [{ cron: "7 * * * *" }]
+  workflow_dispatch:
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -fsS -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" "${{ secrets.APP_URL }}/api/cron/reminders"
+      - run: curl -fsS -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" "${{ secrets.APP_URL }}/api/cron/nudges"

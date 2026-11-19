@@ -199,3 +199,38 @@ do $$ begin
 exception when unique_violation then
   raise notice 'Duplicate matches exist, so the unique index was NOT created. Run the step 1 query, merge the duplicates, then run this script again.';
 end $$;
+-- Coffee completion + private feedback. Two NEW tables only: no existing table or row is changed or deleted.
+-- Safe to run more than once. Run in Neon SQL Editor BEFORE deploying the matching code.
+create table if not exists coffee_confirmation (
+  "matchId" text not null,
+  "userId" text not null,
+  outcome text not null check (outcome in ('met', 'not_met')),
+  at timestamp default now(),
+  primary key ("matchId", "userId")
+);
+create index if not exists coffee_confirmation_user_idx on coffee_confirmation ("userId");
+-- PRIVATE: only the author may ever read a row (the app queries by "userId" = the signed-in user; admin sees aggregates only).
+create table if not exists coffee_feedback (
+  "matchId" text not null,
+  "userId" text not null,
+  again text check (again in ('yes', 'maybe', 'no')),
+  rating integer check (rating between 1 and 5),
+  note text,
+  at timestamp default now(),
+  primary key ("matchId", "userId")
+);
+-- Optional mutual WhatsApp connect. Two NEW tables only; nothing existing is changed.
+-- Numbers live ONLY here (never in profile) and are readable only through lib/whatsapp.js after BOTH people consent.
+-- Safe to run more than once. Run before deploying the matching code.
+create table if not exists member_phone (
+  "userId" text primary key,
+  phone text not null,
+  "updatedAt" timestamp default now()
+);
+create table if not exists whatsapp_consent (
+  "matchId" text not null,
+  "userId" text not null,
+  status text not null check (status in ('shared', 'withdrawn')),
+  at timestamp default now(),
+  primary key ("matchId", "userId")
+);

@@ -1,4 +1,5 @@
 import Nav from "../Nav";
+import PendingActions from "../PendingActions";
 import SubmitButton from "@/app/SubmitButton";
 import { overlap } from "@/lib/avail";
 import { missing, isFinished } from "@/lib/complete";
@@ -39,6 +40,7 @@ export default async function Discover() {
   return (
     <main>
       <Nav />
+      <PendingActions />
       <p>{near} {near === 1 ? "person" : "people"} around {mine.neighborhood}.</p>
       <form action={toggleFree}><SubmitButton className={free ? "primary" : ""}>{free ? "You're free this week (tap to undo)" : "I'm free for coffee this week"}</SubmitButton></form>
       {g.locked ? <div className="card"><h2>Invite {g.need - g.invited} more to keep going</h2><p>You've used your {g.free} free coffee requests. <a href="/invite">Share your invite link</a> ({g.invited}/{g.need} joined)</p></div> : !next ? <p>You're all caught up. Invite people from My coffees to see more.</p> : (

@@ -13,6 +13,7 @@ import { logCoffee } from "@/lib/matchlog";
 import { profiles, accounts, users, swipes, matches, blocks, thanks, events, messages, intros } from "@/schema";
 import { cookies } from "next/headers";
 import { fmt } from "@/lib/fmt";
+import { wipeWhatsApp } from "@/lib/whatsapp";
 import { short } from "@/lib/leaders";
 import { track } from "@/lib/track";
 import { sendMail } from "@/lib/mail";
@@ -117,17 +118,6 @@ export async function swipe(to, yes) {
   }
   revalidatePath("/discover");
 }
-export async function schedule(fd) {
-  const s = await auth(); if (!s) throw new Error("Sign in first"); const id = fd.get("id");
-  if (!(await hit("sched:" + s.user.id, 30, 3600)) || !(await hit("sched:m:" + id, 8, 86400))) return;
-  const [m] = await db.select().from(matches).where(eq(matches.id, id));
-  if (!m || (m.a !== s.user.id && m.b !== s.user.id)) throw new Error("Not your match");
-  await db.update(matches).set({ when: t(fd.get("when"), 80), place: t(fd.get("place"), 80), status: "proposed", proposedBy: s.user.id, reminded: false }).where(eq(matches.id, id));
-  await logCoffee(s.user.id, id, m.when ? "coffee_rescheduled" : "coffee_proposed", { when: t(fd.get("when"), 80), place: t(fd.get("place"), 80), prevStatus: m.status || null });
-  const [ou] = await db.select().from(users).where(eq(users.id, m.a === s.user.id ? m.b : m.a));
-  await sendTemplate(ou?.email, "coffeeProposed", { from: short(s.user.name, s.user.email), when: fmt(fd.get("when")), place: fd.get("place"), base: base(), link: `${base()}/coffee/${id}` }); await notify(ou?.id, short(s.user.name, s.user.email) + " suggested a coffee", "Accept or change the plan.", "/matches");
-  revalidatePath("/matches");
-}
 export async function loadDemo() {
   const s = await auth(); if (!s || s.user.email !== process.env.ADMIN_EMAIL) throw new Error("Admin only");
   const N = ["Noa", "Dan", "Maya", "Eitan", "Shira", "Yoni", "Tal", "Lior", "Avi", "Dana"], C = ["Jerusalem", "Tel Aviv", "Modi'in", "Beit Shemesh"];
@@ -145,6 +135,8 @@ export async function deleteAccount() {
   const mine = (await db.select().from(matches).where(or(eq(matches.a, id), eq(matches.b, id)))).map((m) => m.id);
   if (mine.length) { await db.delete(thanks).where(inArray(thanks.matchId, mine)); await db.delete(messages).where(inArray(messages.matchId, mine)); }
   await db.delete(thanks).where(eq(thanks.fromId, id));
+  try { if (mine.length) await client`delete from coffee_confirmation where "matchId" = any(${mine})`; if (mine.length) await client`delete from coffee_feedback where "matchId" = any(${mine})`; await client`delete from coffee_confirmation where "userId" = ${id}`; await client`delete from coffee_feedback where "userId" = ${id}`; } catch {}
+  await wipeWhatsApp(id);
   await db.delete(intros).where(or(eq(intros.byId, id), eq(intros.a, id), eq(intros.b, id)));
   await db.delete(swipes).where(or(eq(swipes.from, id), eq(swipes.to, id)));
   await db.delete(matches).where(or(eq(matches.a, id), eq(matches.b, id)));
@@ -171,16 +163,6 @@ export async function blockUser(to, reason) {
   await db.delete(swipes).where(or(and(eq(swipes.from, me), eq(swipes.to, to)), and(eq(swipes.from, to), eq(swipes.to, me)))); // old yes votes must not re-create the match
   revalidatePath("/discover"); revalidatePath("/matches");
 }
-export async function checkIn(fd) {
-  const s = await auth(); if (!s) return; const id = fd.get("id");
-  const [m] = await db.select().from(matches).where(eq(matches.id, id));
-  if (!m || (m.a !== s.user.id && m.b !== s.user.id)) return;
-  if (fd.get("met") === "yes") await track(s.user.id, "met");
-  if (fd.get("met") === "yes" && m.met !== true) await logCoffee(s.user.id, id, "coffee_completed", {}, "completed:" + id);
-  if (fd.get("met") !== "yes" && m.met !== false) await logCoffee(s.user.id, id, "coffee_not_completed", {});
-  await db.update(matches).set({ met: fd.get("met") === "yes" }).where(eq(matches.id, id));
-  revalidatePath("/matches");
-}
 
 export async function savePhoto(dataUrl) {
   const s = await auth(); if (!s) return;
@@ -203,18 +185,6 @@ export async function trackEvent(name) {
 }
 
 const base = () => process.env.APP_URL || "https://" + process.env.VERCEL_PROJECT_PRODUCTION_URL;
-export async function respond(fd) {
-  const s = await auth(); if (!s) return; const id = fd.get("id"), act = fd.get("a");
-  const [m] = await db.select().from(matches).where(eq(matches.id, id));
-  if (!m || (m.a !== s.user.id && m.b !== s.user.id)) return;
-  const other = m.a === s.user.id ? m.b : m.a;
-  if (act === "accept" && m.proposedBy !== s.user.id && m.when) { await db.update(matches).set({ status: "confirmed" }).where(eq(matches.id, id)); if (m.status !== "confirmed") await logCoffee(s.user.id, id, "coffee_confirmed", { when: m.when, place: m.place, proposedBy: m.proposedBy }); await track(s.user.id, "booked"); await track(other, "booked"); }
-  else if (act === "cancel") { if (m.status || m.when) await logCoffee(s.user.id, id, "coffee_cancelled", { prevStatus: m.status || null, when: m.when, place: m.place, proposedBy: m.proposedBy }); await db.update(matches).set({ status: null, when: null, place: null, proposedBy: null }).where(eq(matches.id, id)); }
-  else return;
-  const [ou] = await db.select().from(users).where(eq(users.id, other));
-  await sendTemplate(ou?.email, act === "accept" ? "coffeeConfirmed" : "coffeeCancelled", { from: short(s.user.name, s.user.email), base: base(), link: `${base()}/coffee/${id}` }); await notify(ou?.id, act === "accept" ? "Coffee confirmed" : "Coffee cancelled", short(s.user.name, s.user.email), "/matches");
-  revalidatePath("/matches");
-}
 export async function sendMessage(fd) {
   const s = await auth(); if (!s) return; const id = fd.get("id"), text = t(fd.get("text"), 500); if (!text) return;
   if (!(await hit("msg:" + s.user.id, 60, 3600))) return;

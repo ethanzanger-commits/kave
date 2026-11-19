@@ -1,7 +1,11 @@
 import { cookies } from "next/headers";
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
+import { safeNext } from "@/lib/next";
 export const metadata = { title: "Check your email", robots: { index: false } };
 export const dynamic = "force-dynamic";
 export default async function CheckEmail({ searchParams }) {
+  if ((await auth())?.user?.id) redirect(safeNext((await cookies()).get("kave_next")?.value) || "/discover"); // already signed in (e.g. link opened twice)
   const sp = (await searchParams) || {}, email = (await cookies()).get("kave_email")?.value || "", bad = !!(sp.error || sp.e);
   return (
     <main>

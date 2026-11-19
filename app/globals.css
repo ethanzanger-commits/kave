@@ -94,3 +94,11 @@ img{max-width:100%;height:auto}
   .sticky{bottom:calc(52px + env(safe-area-inset-bottom))!important}
   .bubble{max-width:92%}
 }
+/* Coffee flow */
+.status{margin:.2rem 0 .6rem;font-size:.95rem}.status b{text-transform:uppercase;letter-spacing:.04em;font-size:.78rem}
+.status.todo{border-left:4px solid var(--orange);padding-left:.6rem;font-weight:600}.status.ok b{color:#1f7a3d}
+.coffee-panel{margin:.8rem 0;padding:.8rem 0;border-top:1px solid var(--ink)}
+.coffee-panel details{margin:.6rem 0}.coffee-panel summary{cursor:pointer;font-weight:600;min-height:44px;display:flex;align-items:center}
+.todo-strip ul{list-style:none;margin:0;padding:0}.todo-strip li{padding:.55rem 0;border-top:1px solid var(--tint)}.todo-strip a{display:block;min-height:44px}
+img,iframe{max-width:100%}
+@media (max-width:639px){.coffee-panel .row{flex-direction:column;align-items:stretch}.coffee-panel .row>form,.coffee-panel .row button{width:100%}}
