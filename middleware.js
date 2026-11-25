@@ -6,4 +6,4 @@ export function middleware(req) {
   if (v && !req.cookies.get("src")) res.cookies.set("src", v, { maxAge: 60 * 60 * 24 * 30, httpOnly: true, sameSite: "lax", path: "/" });
   return res;
 }
-export const config = { matcher: ["/((?!_next|api|.*\\..*).*)"] };
+export const config = { matcher: ["/((?!_next|api|ingest|.*\\..*).*)"] };
