@@ -6,7 +6,7 @@ export default function ShareCard({ code }) {
   const [msg, setMsg] = useState("");
   const [post, setPost] = useState("");
   const link = () => location.origin + "/s/" + code;
-  useEffect(() => { setPost("I just joined @Kave a coffee-matching community for Israeli tech professionals.\n\nIf you'd like to meet interesting people outside your usual circle, join me: " + location.origin + "/s/" + code + "?src=card-linkedin"); }, [code]);
+  useEffect(() => { setPost("I just joined Kave a coffee-matching community for Israeli tech professionals.\n\nIf you'd like to meet interesting people outside your usual circle, join me: " + location.origin + "/s/" + code + "?src=card-linkedin"); }, [code]);
   async function copy() { trackEvent("card_shared"); try { await navigator.clipboard.writeText(link() + "?src=card-copy"); setMsg("Link copied."); } catch { setMsg("Couldn't copy. Press and hold the link to copy it."); } }
   return (
     <div className="card">
