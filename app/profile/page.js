@@ -10,6 +10,7 @@ import PushButton from "../PushButton";
 import { winnerMap } from "@/lib/leaders";
 import { profiles, accounts, users, swipes, matches } from "@/schema";
 import { missing } from "@/lib/complete";
+import { trackOnce } from "@/lib/track";
 import { and, eq, or } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import ProfileForm from "../ProfileForm";
@@ -26,13 +27,14 @@ export default async function Profile() {
     await client`update "user" set source = ${rf ? "referral" : cr ? "circle:" + cr : sc || "direct"}, "referredBy" = ${by} where id = ${id} and source is null`;
   }
   const miss = missing(p, u?.image);
+  if (!p?.ageOk) await trackOnce(id, "profile_started");
   const stats = await communityStats(client);
   const win = await winnerMap(client);
   const done = Math.round(((6 - miss.length) / 6) * 100);
   const sw = (await db.select().from(swipes).where(eq(swipes.from, id))).length;
   const ms = await db.select().from(matches).where(or(eq(matches.a, id), eq(matches.b, id)));
   const step = miss.length ? ["Finish your profile", `Still needed: ${miss.join(", ")}. Then you can start meeting people.`, ""]
-    : sw === 0 ? ["Meet your first people", "Go to Discover and tap Coffee? on someone who looks interesting.", "/discover"]
+    : sw === 0 ? ["Meet your first people", "Go to Discover and ask someone who looks interesting if they would like to meet.", "/discover"]
     : ms.length === 0 ? ["Waiting for a match", "A match needs both people to say yes. Invite friends so there are more people to meet.", "/invite"]
     : !ms.some((m) => m.when && m.status !== "proposed") ? ["Book your coffee", "Open My coffees, pick a café and a time.", "/matches"]
     : ["Bring someone along", "Invite friends and earn badges.", "/invite"];
@@ -46,7 +48,7 @@ export default async function Profile() {
       </div>
       <Nav />
       {p?.linkedinUrl && <a href={p.linkedinUrl} target="_blank" rel="noopener noreferrer">View LinkedIn profile</a>}
-      {process.env.UNLOCK_INVITES !== "0" && <p className="why">Invite 3 friends to unlock unlimited coffee requests. <a href="/invite">Get your link</a></p>}
+      {!miss.length && <p className="meta">Know someone who'd enjoy a coffee like the ones you'll have here? <a href="/invite">Get your invite link</a></p>}
       {p?.foundingNo && <div className="card"><div className="who"><img className="badgeimg" src="/badges/founding-50.svg" alt="" width="72" height="72" /><div><h2>KAVE FOUNDING 50</h2><p style={{ margin: 0 }}>Member #{p.foundingNo}. Yours for good.</p></div></div></div>}
       {miss.length > 0 && <div className="card"><b>Your profile is {done}% complete</b><div className="bar"><div style={{ width: done + "%" }} /></div><h2>You're almost on Kave!</h2><p>Complete your profile to start meeting interesting professionals{stats.foundingLeft > 0 ? ` and secure your chance to become one of the first 50 Kave members (${stats.foundingLeft} spots left)` : ""}.</p></div>}
       {!miss.length && <p className="why">✓ Your account is set up and your profile is live.</p>}

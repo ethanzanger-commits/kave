@@ -1,24 +1,22 @@
-import { NextResponse } from "next/server";
-import nodemailer from "nodemailer";
+const port = Number(process.env.SMTP_PORT || 465);
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || "smtp.resend.com",
+  port,
+  secure: port === 465,
+  auth: { user: process.env.SMTP_USER || "resend", pass: process.env.SMTP_PASS },
+});
 
-export async function GET() {
+export async function sendMail(to, subject, text) {
+  if (!to || !process.env.SMTP_PASS) return false;
   try {
-    const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 465,
-      secure: true,
-      auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD,
-      },
+    await transporter.sendMail({
+      from: process.env.EMAIL_FROM || "kave <noreply@kavechats.com>",
+      replyTo: process.env.REPLY_TO || undefined,
+      to, subject, text, html: toHtml(text),
     });
-
-    // Verify connection configuration
-    await transporter.verify();
-
-    return NextResponse.json({ success: true, message: "SMTP connection verified successfully!" });
-  } catch (error) {
-    console.error("SMTP Test Error:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return true;
+  } catch (e) {
+    console.error("sendMail failed:", e.message);
+    return false;
   }
 }

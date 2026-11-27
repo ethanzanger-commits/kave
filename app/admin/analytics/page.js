@@ -2,13 +2,15 @@ import AdminNav from "../AdminNav";
 import { auth } from "@/auth";
 import { client } from "@/db";
 import { redirect } from "next/navigation";
+import { retention } from "@/lib/growth";
+import { posthogOn } from "@/lib/posthog";
 const pct = (a, b) => (b > 0 ? Math.round((a / b) * 100) : 0);
 export default async function Analytics() {
   const s = await auth();
   if (!s || !process.env.ADMIN_EMAIL || s.user.email !== process.env.ADMIN_EMAIL) redirect("/");
-  let f, weeks = [], active = [], ev = [], ttm = null, err = "";
+  let f, weeks = [], active = [], ev = [], ttm = null, ret = null, err = "";
   try {
-    [[f], weeks, active, ev, [ttm]] = await Promise.all([
+    [[f], weeks, active, ev, [ttm], ret] = await Promise.all([
       client`select
         (select count(*) from "user" where id not like 'demo-%') as signed_up,
         (select count(*) from profile where "ageOk" and not coalesce("isDemo", false)) as profiled,
@@ -21,6 +23,7 @@ export default async function Analytics() {
       client`select to_char(date_trunc('week', at), 'DD Mon') as wk, count(distinct "userId") as c from event where at > now() - interval '8 weeks' and name <> 'ref_visit' group by date_trunc('week', at) order by date_trunc('week', at)`,
       client`select name, count(*) as c, count(distinct "userId") as u from event where at > now() - interval '30 days' group by name order by c desc`,
       client`select round(avg(extract(epoch from (m.at - u."createdAt")) / 86400)::numeric, 1) as days from (select u2, min(at) as at from (select a as u2, at from match union all select b, at from match) y group by u2) m join "user" u on u.id = m.u2 where u.id not like 'demo-%'`,
+      retention(client).catch(() => null),
     ]);
   } catch { err = "Analytics tables are missing. Run the analytics SQL in Neon, then reload."; }
   const n = (k) => Number(f?.[k] || 0);
@@ -37,6 +40,13 @@ export default async function Analytics() {
             <div key={label}><p style={{ margin: ".6rem 0 0" }}><b>{label}</b>: {v} <small>({pct(v, steps[0][1])}% of sign-ups{i > 0 ? `, ${pct(v, steps[i - 1][1])}% of previous step` : ""})</small></p>
               <div className="bar"><div style={{ width: pct(v, steps[0][1]) + "%" }} /></div></div>))}
         </div>
+        <p className="hint">Registrations are everyone who has signed in. Activated members have a complete profile and have asked for, or received, a coffee request.</p>
+        <div className="card"><h2>Retention</h2>
+          {ret ? <><p>7-day: {ret.eligible7 ? `${pct(ret.retained7, ret.eligible7)}% (${ret.retained7} of ${ret.eligible7} members with a complete profile for 7+ days)` : "not enough data yet"}</p>
+            <p>30-day: {ret.eligible30 ? `${pct(ret.retained30, ret.eligible30)}% (${ret.retained30} of ${ret.eligible30} members with a complete profile for 30+ days)` : "not enough data yet"}</p>
+            <small>Retained means active again at or after day 7 or 30 after finishing the profile.</small></> : <p>Needs the growth SQL (kave8-growth.sql) in Neon.</p>}</div>
+        <div className="card"><h2>Product analytics (PostHog)</h2>
+          <p>{posthogOn() ? "PostHog key detected. Events are forwarded on a best-effort basis. Confirm they arrive in your PostHog project before relying on them." : "Not connected. Events are stored in Kave's own database only. Set NEXT_PUBLIC_POSTHOG_KEY (and NEXT_PUBLIC_POSTHOG_HOST if your project is not in the US region) in Vercel to forward them."}</p></div>
         <div className="card"><h2>Growth</h2>
           <p>Friends referred: {n("referred")} ({n("profiled") ? (n("referred") / n("profiled")).toFixed(2) : "0"} per finished profile)</p>
           <p>Average days from sign-up to first match: {ttm?.days ?? "no data yet"}</p></div>

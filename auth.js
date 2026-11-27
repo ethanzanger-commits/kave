@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { sendMail } from "@/lib/mail";
 import { copy } from "@/lib/emails";
 import { users, accounts, verificationTokens } from "@/schema";
+import { track } from "@/lib/track";
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: DrizzleAdapter(db, { usersTable: users, accountsTable: accounts, verificationTokensTable: verificationTokens }),
   trustHost: true,
@@ -15,5 +16,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     const ok = await sendMail(identifier, ...copy("signin", { url }));
     if (!ok) throw new Error("Email failed");
   } })],
+  events: { async createUser({ user }) { await track(user.id, "signup_completed"); } },
   callbacks: { jwt({ token }) { delete token.picture; return token; }, session({ session, token }) { session.user.id = token.sub; return session; } },
 });

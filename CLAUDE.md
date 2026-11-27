@@ -11,6 +11,7 @@ Next.js 15 App Router (plain JS) · Auth.js v5 (JWT sessions, Drizzle adapter, e
 - Schema changes: add to `schema.js` AND a SQL file in `migrations/`; owner runs it in Neon SQL Editor (drizzle-kit push is unreliable). Keep migrations idempotent.
 - Profile complete = `missing(profile, user.image)` in `lib/complete.js` (photo, city, headline, about, 1+ skill, 18+). Server re-checks in `saveProfile`.
 - Location is city-only from `lib/cities.js` presets; `neighborhood` is stored equal to `city`. Never store coordinates.
+- Kave 2.0: no referral gating. `lib/gate.js` still returns invite counts (for prompts) but `locked` is always false and `open` always true; discovery, names and requests are free. Match reasons come from `reasons()` in `lib/match.js` (real data only). Nav is an async server component with badge counts (pending = requests + proposals + intros; upcoming = future confirmed). Funnel events: signup_started (PostHog only, pre-login), signup_completed (Auth.js createUser), profile_started, profile_completed, discover_viewed, profile_opened, coffee_requested, match_created, coffee_proposed, coffee_confirmed, coffee_completed, referral_shared, referral_completed, written to `event` and forwarded to PostHog when NEXT_PUBLIC_POSTHOG_KEY is set (`lib/posthog.js`, optional NEXT_PUBLIC_POSTHOG_HOST).
 - Founding 50: `lib/founding.js` (unique index + CHECK 1..50, retry). Referral credit set once at first `saveProfile` (`invitedBy`), never on update; no self-referral.
 - Demo users have ids `demo-*`; exclude from all stats. Never delete production records except user-initiated `deleteAccount`.
 - Emails: `sendMail` returns true/false. Marketing emails honor `optout` table and signed `/unsubscribe` link.
@@ -25,7 +26,7 @@ DB logic tests: `npm i --no-save @electric-sql/pglite && node tests/db.test.mjs`
 Deploy: `npx vercel --prod` (project folder `kave-full-new\kave`; GitHub push is out of sync, do not push from old folder).
 
 ## Env (Vercel Production)
-DATABASE_URL, AUTH_SECRET, GMAIL_USER, GMAIL_APP_PASSWORD, ADMIN_EMAIL, CRON_SECRET, UNLOCK_INVITES. Optional: APP_URL, MILESTONES, ANTHROPIC_API_KEY, AUTH_LINKEDIN_*, AUTH_GOOGLE_*.
+DATABASE_URL, AUTH_SECRET, GMAIL_USER, GMAIL_APP_PASSWORD, ADMIN_EMAIL, CRON_SECRET, UNLOCK_INVITES. Optional: NEXT_PUBLIC_POSTHOG_KEY, NEXT_PUBLIC_POSTHOG_HOST, APP_URL, MILESTONES, ANTHROPIC_API_KEY, AUTH_LINKEDIN_*, AUTH_GOOGLE_*.
 
 ## Security
 Admin pages gate on `ADMIN_EMAIL`. Public share pages expose first name + headline + founding number only. 18+ required. Free plans only; no Supabase.

@@ -42,6 +42,7 @@ export async function saveProfile(d) {
   if (cs && /^[a-z0-9-]{1,40}$/.test(cs)) await joinCircle(client, cs, s.user.id);
   if (first) {
     await track(s.user.id, "profile_completed");
+    if (invitedBy) await track(invitedBy, "referral_completed");
     await sendTemplate(s.user.email, "welcome", { name: s.user.name, founding: fn, base: base() });
   }
   revalidatePath("/profile");
@@ -56,7 +57,7 @@ export async function disconnectLinkedIn() {
 export async function swipe(to, yes) {
   const s = await auth(); if (!s) throw new Error("Sign in first"); const me = s.user.id;
   if (yes) { const [pre] = await db.select().from(swipes).where(and(eq(swipes.from, to), eq(swipes.to, me), eq(swipes.yes, true))); if (!pre && (await gate(me, s.user.email)).locked) throw new Error("Invite friends to unlock more coffees"); }
-  if (yes) await track(me, "coffee_yes");
+  if (yes) { await track(me, "coffee_yes"); await track(me, "coffee_requested"); }
   await db.insert(swipes).values({ from: me, to, yes }).onConflictDoUpdate({ target: [swipes.from, swipes.to], set: { yes } });
   if (yes) {
     const [back] = await db.select().from(swipes).where(and(eq(swipes.from, to), eq(swipes.to, me), eq(swipes.yes, true)));
@@ -64,7 +65,7 @@ export async function swipe(to, yes) {
     if (!back && !to.startsWith("demo-")) { const [ru] = await db.select().from(users).where(eq(users.id, to)); await sendTemplate(ru?.email, "coffeeRequest", { from: short(s.user.name, s.user.email), base: base() }); await notify(to, short(s.user.name, s.user.email) + " would like to grab coffee", "Open Kave to accept or decline.", "/matches"); }
     if ((back || to.startsWith("demo-")) && !ex.length) {
       await db.insert(matches).values({ a: me, b: to });
-      await track(me, "matched"); await track(to, "matched");
+      await track(me, "matched"); await track(to, "matched"); await track(me, "match_created");
       if (back) {
         const us = await db.select().from(users).where(inArray(users.id, [me, to]));
         for (const u of us) { await notify(u.id, "It's a match", "Pick a time and place for your coffee.", "/matches"); await sendTemplate(u.email, "match", { other: short(us.find((x) => x.id !== u.id)?.name, us.find((x) => x.id !== u.id)?.email), base: base() }); }
@@ -77,6 +78,7 @@ export async function schedule(fd) {
   const s = await auth(); if (!s) throw new Error("Sign in first"); const id = fd.get("id");
   const [m] = await db.select().from(matches).where(eq(matches.id, id));
   if (!m || (m.a !== s.user.id && m.b !== s.user.id)) throw new Error("Not your match");
+  await track(s.user.id, "coffee_proposed");
   await db.update(matches).set({ when: t(fd.get("when"), 80), place: t(fd.get("place"), 80), status: "proposed", proposedBy: s.user.id, reminded: false }).where(eq(matches.id, id));
   const [ou] = await db.select().from(users).where(eq(users.id, m.a === s.user.id ? m.b : m.a));
   await sendTemplate(ou?.email, "coffeeProposed", { from: short(s.user.name, s.user.email), when: fmt(fd.get("when")), place: fd.get("place"), base: base() }); await notify(ou?.id, short(s.user.name, s.user.email) + " suggested a coffee", "Accept or change the plan.", "/matches");
@@ -115,7 +117,7 @@ export async function checkIn(fd) {
   const s = await auth(); if (!s) return; const id = fd.get("id");
   const [m] = await db.select().from(matches).where(eq(matches.id, id));
   if (!m || (m.a !== s.user.id && m.b !== s.user.id)) return;
-  if (fd.get("met") === "yes") await track(s.user.id, "met");
+  if (fd.get("met") === "yes") { await track(s.user.id, "met"); await track(s.user.id, "coffee_completed"); }
   await db.update(matches).set({ met: fd.get("met") === "yes" }).where(eq(matches.id, id));
   revalidatePath("/matches");
 }
@@ -136,8 +138,9 @@ export async function sendThanks(fd) {
 }
 
 export async function trackEvent(name) {
-  const s = await auth(); if (!s || !["invite_shared", "card_shared"].includes(name)) return;
+  const s = await auth(); if (!s || !["invite_shared", "card_shared", "profile_opened"].includes(name)) return;
   await track(s.user.id, name);
+  if (name === "invite_shared" || name === "card_shared") await track(s.user.id, "referral_shared");
 }
 
 const base = () => process.env.APP_URL || "https://" + process.env.VERCEL_PROJECT_PRODUCTION_URL;
@@ -146,7 +149,7 @@ export async function respond(fd) {
   const [m] = await db.select().from(matches).where(eq(matches.id, id));
   if (!m || (m.a !== s.user.id && m.b !== s.user.id)) return;
   const other = m.a === s.user.id ? m.b : m.a;
-  if (act === "accept" && m.proposedBy !== s.user.id && m.when) { await db.update(matches).set({ status: "confirmed" }).where(eq(matches.id, id)); await track(s.user.id, "booked"); await track(other, "booked"); }
+  if (act === "accept" && m.proposedBy !== s.user.id && m.when) { await db.update(matches).set({ status: "confirmed" }).where(eq(matches.id, id)); await track(s.user.id, "booked"); await track(other, "booked"); await track(s.user.id, "coffee_confirmed"); }
   else if (act === "cancel") await db.update(matches).set({ status: null, when: null, place: null, proposedBy: null }).where(eq(matches.id, id));
   else return;
   const [ou] = await db.select().from(users).where(eq(users.id, other));
