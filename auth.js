@@ -12,7 +12,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: DrizzleAdapter(db, { usersTable: users, accountsTable: accounts, verificationTokensTable: verificationTokens }),
   trustHost: true,
   session: { strategy: "jwt" },
-  providers: [...(process.env.AUTH_LINKEDIN_ID ? [LinkedIn({ allowDangerousEmailAccountLinking: true })] : []), ...(process.env.AUTH_GOOGLE_ID ? [Google({ allowDangerousEmailAccountLinking: true })] : []), Nodemailer({ server: { host: "localhost" }, from: process.env.EMAIL_FROM || process.env.GMAIL_USER, sendVerificationRequest: async ({ identifier, url }) => {
+  providers: [...(process.env.AUTH_LINKEDIN_ID ? [LinkedIn({ allowDangerousEmailAccountLinking: true })] : []), ...(process.env.AUTH_GOOGLE_ID ? [Google({ allowDangerousEmailAccountLinking: true })] : []), Nodemailer({ server: { host: "localhost" }, from: process.env.EMAIL_FROM || "kave <noreply@kavechats.com>", sendVerificationRequest: async ({ identifier, url }) => {
     const ok = await sendMail(identifier, ...copy("signin", { url }));
     if (!ok) throw new Error("Email failed");
   } })],
